@@ -47,7 +47,27 @@ prompt_1 = "what is life?"
 
 response = client.models.generate_content(
     model='gemini-2.0-flash',
-    contents = [prompt],
+    contents=[     #  SYSTEM ROLE IS NOT SUPPORTED IN THE CONTENTS IN GEMINI
+        # types.Content(
+        #     role="system",
+        #     parts=[types.Part.from_text(text=system_prompt)]
+        # ),
+        types.Content(
+            role="user",
+            parts=[types.Part.from_text(text=prompt)]
+        ),
+        types.Content(
+            role="assistant",
+            parts=[types.Part.from_text(text='initial system prompt. if any!')]
+        )
+    ],
+    # APPENDING TO CONTENTS
+    #     contents.append(
+        #     types.Content(
+        #         role="user",
+        #         parts="Another user message to continue the conversation."
+        #     )
+        # )
     config = types.GenerateContentConfig(
         max_output_tokens=500,
         temperature=0.1,
