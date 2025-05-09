@@ -9,6 +9,30 @@ model = "mistral-small-latest"
 
 client = Mistral(api_key=api_key)
 
+
+def get_weather(city: str) -> str:
+    return f"weather in {city} is 31 degree celcius!!"
+
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": get_weather,
+            "description": "Returns the weather in a given location",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "city": {
+                        "type": "string",
+                        "description": "The city to get the weather for"
+                    }
+                },
+                "required": ["city"]
+            }
+        }
+    }
+]
+
 system_prompt = """
 You are a helpful AI assistant who is expert in breaking down complex problems and resolving user queries.
 You work in the following modes: start, plan, execute, monitor, and result.
@@ -67,14 +91,45 @@ while True:
         messages=messages,
         max_tokens=500,
         temperature=0.1,
-        response_format={"type": "json_object"}
+        response_format={"type": "json_object"},
+        tools=tools,
+        tool_choice="auto"
     )
 
     try:
         result = chat_response.choices[0].message.content
-        # print(type(result))
         parsed_response = json.loads(result)
-        print(parsed_response)
+        # print(parsed_response)
+
+        messages.append({
+            "role": "assistant",
+            "content": json.dumps(parsed_response)
+        })
+
+        # handling execute step where we need to do function call
+        if parsed_response.get("step") == "execute":
+            print(f"🧠: {parsed_response.get("content")}")
+            tool_name = parsed_response.get("function")
+            tool_input = parsed_response.get("input")
+
+            if tools[0].get("function", {}).get("name") == tool_name:
+                output = tools[0].get("function", {}).get("name")(tool_input)
+                messages.append(
+                    {
+                        "role": "assitant",
+                        "content": json.dumps({"step": "monitor", "output": output})
+                    }
+                )
+            else:
+                print(f"😱: function name did not match")
+            continue
+
+        # handling result/final step
+        if parsed_response.get("step") == "result":
+            print(f"🤖: {parsed_response.get("content")}")
+            break
+        print(f"🧠: {parsed_response.get("content")}")
+
     except Exception as e:
         print(f"Something went wrong!!:  {e}")
 
