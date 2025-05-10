@@ -64,7 +64,7 @@ Example:
 User Query: What is the weather in New York?
 - {"step": "start", "content": "Alright! The user is interested in a weather query and is asking about the weather in New York"}
 - {"step": "plan", "content": "To get the weather in New York, I need to call the get_weather function"}
-- {"step": "execute", "function": "get_weather", "input": "New York"}
+- {"step": "execute", "content": "Executing function call"}
 - {"step": "monitor", "content": "Weather in New York is very hot today, 31 degrees Celsius."}
 - {"step": "result", "content": "31 degrees Celsius."}
 
@@ -103,28 +103,32 @@ while True:
     tool_call = response.output[0]
 
     if tool_call.type == "function_call":
+        # print("inside tool call")
         args = json.loads(tool_call.arguments)
         tool_string = tool_call.name
         tool = function_names.get(tool_string)
-        result = tool(*args)
-        print(result)
+        if tool != None:
+            result = tool(**args)
 
-        # first we have to append the original tool call response
-        messages.append(tool_call)
+            # first we have to append the original tool call response
+            messages.append(tool_call)
 
-        # then appending with the function's call id
-        messages.append(
-            {
-                "type": "function_call_output",
-                "call_id": tool_call.call_id,   
-                "output": str(result)
-            }
-        )
-        # print(f"🧠: {}")
+            # then appending with the function's call id
+            messages.append(
+                {
+                    "type": "function_call_output",
+                    "call_id": tool_call.call_id,   
+                    "output": str(result)
+                }
+            )
+        else:
+            print("No tool present!!!")
+            break
+        print(f"⛏️: calling the tool {tool_call.name}")
+
         continue
     else:
-        print("No function call involved")
-        no_tool_response = tool_call.content[0].text
+        no_tool_response = json.loads(tool_call.content[0].text)
         current_step = no_tool_response.get("step")
         current_step_index = step_sequence.index(current_step)
 
@@ -135,7 +139,10 @@ while True:
         messages.append(
             {
                 "role": "assistant",
-                "content": {"step": step_sequence[current_step_index + 1], "content": json.dumps(no_tool_response.get("content")) }
+                "content": json.dumps({
+                    "step": step_sequence[current_step_index + 1],
+                    "content": no_tool_response.get("content")
+                })
             }
         )
 
