@@ -3,13 +3,20 @@ load_dotenv()
 import os
 from openai import OpenAI
 import json
+import requests
 
 api_key = os.environ["OPENAI_API_KEY"]
 
 client = OpenAI()
 
 def get_weather(city: str) -> str:
-    return f"the weather in {city} is 31 degree celcius!!"
+    url = f"https://wttr.in/{city}?format=%C+%t"
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        return f"weather in {city} is {response.text}"
+    else:
+        return "something went wrong with weather api"
 
 function_names = {
     "get_weather": get_weather
@@ -130,7 +137,7 @@ while True:
     else:
         no_tool_response = json.loads(tool_call.content[0].text)
         current_step = no_tool_response.get("step")
-        
+
 
         if current_step == "result":
             print(f"🤖: {no_tool_response.get("content")}")
