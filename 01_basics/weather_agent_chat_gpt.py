@@ -88,64 +88,66 @@ messages = [
     },
 ]
 
-user_query = input("> ")
-
-messages.append({
-    "role": "user",
-    "content": user_query
-})
-
-
-
 while True:
 
-    response = client.responses.create(
-        model="gpt-4o",
-        input=messages,
-        max_output_tokens=500,
-        temperature=0.1,
-        tools=tools
-    )
+    user_query = input("> ")
 
-    tool_call = response.output[0]
+    messages.append({
+        "role": "user",
+        "content": user_query
+    })
 
-    if tool_call.type == "function_call":
-        
-        args = json.loads(tool_call.arguments)
-        tool_string = tool_call.name
-        tool = function_names.get(tool_string)
-        if tool != None:
-            result = tool(**args)
 
-            # first we have to append the original tool call response
-            messages.append(tool_call)
 
-            # then appending with the function's call id
-            messages.append(
-                {
-                    "type": "function_call_output",
-                    "call_id": tool_call.call_id,   
-                    "output": str(result)
-                }
-            )
+    while True:
+
+        response = client.responses.create(
+            model="gpt-4o",
+            input=messages,
+            max_output_tokens=500,
+            temperature=0.1,
+            tools=tools
+        )
+
+        tool_call = response.output[0]
+
+        if tool_call.type == "function_call":
+            
+            args = json.loads(tool_call.arguments)
+            tool_string = tool_call.name
+            tool = function_names.get(tool_string)
+            if tool != None:
+                result = tool(**args)
+
+                # first we have to append the original tool call response
+                messages.append(tool_call)
+
+                # then appending with the function's call id
+                messages.append(
+                    {
+                        "type": "function_call_output",
+                        "call_id": tool_call.call_id,   
+                        "output": str(result)
+                    }
+                )
+            else:
+                print("No tool present!!!")
+                break
+            print(f"⛏️: calling the tool {tool_call.name}")
+
+            continue
         else:
-            print("No tool present!!!")
-            break
-        print(f"⛏️: calling the tool {tool_call.name}")
-
-        continue
-    else:
-        no_tool_response = json.loads(tool_call.content[0].text)
-        current_step = no_tool_response.get("step")
+            no_tool_response = json.loads(tool_call.content[0].text)
+            current_step = no_tool_response.get("step")
 
 
-        if current_step == "result":
-            print(f"🤖: {no_tool_response.get("content")}")
-            break
+            if current_step == "result":
+                print(f"🤖: {no_tool_response.get("content")}")
+                break
 
-        messages.append({
-            "role": "assistant",
-            "content": json.dumps(no_tool_response)
-        })
+            messages.append({
+                "role": "assistant",
+                "content": json.dumps(no_tool_response)
+            })
 
-        print(f"🧠: {no_tool_response.get("content")}")
+            print(f"🧠: {no_tool_response.get("content")}")
