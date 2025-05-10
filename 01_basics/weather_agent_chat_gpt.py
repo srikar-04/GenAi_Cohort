@@ -88,7 +88,7 @@ messages.append({
     "content": user_query
 })
 
-step_sequence = ["start", "plan", "execute", "monitor", "result"]
+
 
 while True:
 
@@ -103,7 +103,7 @@ while True:
     tool_call = response.output[0]
 
     if tool_call.type == "function_call":
-        # print("inside tool call")
+        
         args = json.loads(tool_call.arguments)
         tool_string = tool_call.name
         tool = function_names.get(tool_string)
@@ -130,20 +130,15 @@ while True:
     else:
         no_tool_response = json.loads(tool_call.content[0].text)
         current_step = no_tool_response.get("step")
-        current_step_index = step_sequence.index(current_step)
+        
 
         if current_step == "result":
             print(f"🤖: {no_tool_response.get("content")}")
             break
 
-        messages.append(
-            {
-                "role": "assistant",
-                "content": json.dumps({
-                    "step": step_sequence[current_step_index + 1],
-                    "content": no_tool_response.get("content")
-                })
-            }
-        )
+        messages.append({
+            "role": "assistant",
+            "content": json.dumps(no_tool_response)
+        })
 
         print(f"🧠: {no_tool_response.get("content")}")
