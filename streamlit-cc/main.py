@@ -1,6 +1,14 @@
-def main():
-    print("Hello from streamlit-cc!")
+import streamlit as st
 
+st.title("Hello Chai App")
+st.subheader("Brewed with streamlit")
+st.text("Welcome to first interactive applliation!")
+st.write("write something!!")
+st.write([1, 2, 3])
+st.write({
+    "name": "srikar",
+    "age": 20
+})
 
-if __name__ == "__main__":
-    main()
+chai = st.selectbox("Select your favourite chai: ", ["masala chai", "ginger tea", "iced lemon tea", "oolong tea", "kesar chai", "black tea", "green tea"])
+st.write(f"You choose {chai}")
