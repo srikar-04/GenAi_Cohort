@@ -4,6 +4,8 @@ import os
 from openai import OpenAI
 import json
 import requests
+import random
+import math
 
 api_key = os.environ["OPENAI_API_KEY"]
 
@@ -18,9 +20,9 @@ def get_weather(city: str) -> str:
     else:
         return "something went wrong with weather api"
 
-function_names = {
-    "get_weather": get_weather
-}
+def random_number(range):
+    random_num = math.floor(random.random() * range)
+    return random_num
 
 tools = [
     {
@@ -37,11 +39,26 @@ tools = [
             },
             "required": ["city"]
         }
+    },
+    {
+        "type": "function",
+        "name": "random_number",
+        "description": "Generationg a random number in the given range",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "range": {
+                    "type": "number",
+                    "description": "range in which random number is to be generated"
+                }
+            }
+        }
     }
 ]
 
 function_names = {
-    "get_weather": get_weather
+    "get_weather": get_weather,
+    "random_number": random_number
 }
 
 system_prompt = """
@@ -57,6 +74,7 @@ Rules:
 2. Strictly perform only one step at a time and wait for the next input.
 3. Carefully analyze the user query.
 4. Donot wrap the response in a code block or fences
+5. Tool call MUST happen only in the "execute" step. During this step, you must invoke the correct function using the OpenAI tool call format. Do NOT just describe it — instead, respond with a tool call so that the tool is actually invoked.
 
 Output JSON Format:
 
@@ -78,6 +96,7 @@ User Query: What is the weather in New York?
 Tools:
 - get_weather: "Returns the weather in a given location"
 - input: "Takes input from the user query"
+- random_number: "Generates a random number in the given range"
 """
 
 
@@ -117,6 +136,7 @@ while True:
             tool_string = tool_call.name
             tool = function_names.get(tool_string)
             if tool != None:
+                print(f"⛏️: calling the tool {tool_call.name}")
                 result = tool(**args)
 
                 # first we have to append the original tool call response
@@ -133,21 +153,23 @@ while True:
             else:
                 print("No tool present!!!")
                 break
-            print(f"⛏️: calling the tool {tool_call.name}")
 
             continue
         else:
-            no_tool_response = json.loads(tool_call.content[0].text)
-            current_step = no_tool_response.get("step")
+            try:
+                no_tool_response = json.loads(tool_call.content[0].text)
+                current_step = no_tool_response.get("step")
 
 
-            if current_step == "result":
-                print(f"🤖: {no_tool_response.get("content")}")
-                break
+                if current_step == "result":
+                    print(f"🤖: {no_tool_response.get("content")}")
+                    break
 
-            messages.append({
-                "role": "assistant",
-                "content": json.dumps(no_tool_response)
-            })
+                messages.append({
+                    "role": "assistant",
+                    "content": json.dumps(no_tool_response)
+                })
 
-            print(f"🧠: {no_tool_response.get("content")}")
+                print(f"🧠: {no_tool_response.get("content")}")
+            except Exception as e:
+                print(f"something went wrong with JSON {e}")
