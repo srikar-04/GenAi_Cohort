@@ -6,6 +6,7 @@ import json
 import requests
 import random
 import math
+import subprocess
 
 api_key = os.environ["OPENAI_API_KEY"]
 
@@ -24,10 +25,20 @@ def random_number(range):
     random_num = math.floor(random.random() * range)
     return random_num
 
+def execute_command(command: str):
+    print("inside the execute command function !!!!")
+    result = subprocess.run(command, shell=True, capture_output=True, text=True)
+    if result.returncode == 0:
+        return f"Command executed successfully:\n{result.stdout.strip()}"
+    else:
+        raise ValueError("Execute command function failed!!")
+
+print(type(execute_command('ls')))
+
 tools = [
     {
         "type": "function",
-        "name": "get_weather",
+        "name": "get_weather", 
         "description": "Get current temperature for a given location.",
         "parameters": {
             "type": "object",
@@ -51,14 +62,31 @@ tools = [
                     "type": "number",
                     "description": "range in which random number is to be generated"
                 }
-            }
+            },
+            "required": ["range"]
+        }
+    },
+    {
+        "type": "function",
+        "name": "execute_command", 
+        "description": "Executes a command based on user query",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "command": {
+                    "type": "string",
+                    "description": "command assumed from user query"
+                }
+            },
+            "required": ["command"]
         }
     }
 ]
 
 function_names = {
     "get_weather": get_weather,
-    "random_number": random_number
+    "random_number": random_number,
+    "execute_command": execute_command,
 }
 
 system_prompt = """
@@ -75,6 +103,7 @@ Rules:
 3. Carefully analyze the user query.
 4. Donot wrap the response in a code block or fences
 5. Tool call MUST happen only in the "execute" step. During this step, you must invoke the correct function using the OpenAI tool call format. Do NOT just describe it — instead, respond with a tool call so that the tool is actually invoked.
+6. NEVER provide an answer that requires tool information without first calling the appropriate tool.
 
 Output JSON Format:
 
@@ -97,6 +126,7 @@ Tools:
 - get_weather: "Returns the weather in a given location"
 - input: "Takes input from the user query"
 - random_number: "Generates a random number in the given range"
+- execute_command: "Assumes a command based on user query and executes the command"
 """
 
 
@@ -121,7 +151,7 @@ while True:
     while True:
 
         response = client.responses.create(
-            model="gpt-4o",
+            model="gpt-4.1",
             input=messages,
             max_output_tokens=500,
             temperature=0.1,
@@ -160,6 +190,15 @@ while True:
                 no_tool_response = json.loads(tool_call.content[0].text)
                 current_step = no_tool_response.get("step")
 
+                if current_step == "execute":
+                # Check if this step properly invoked a tool
+                    if tool_call.type != "function_call":
+                        # Force a retry by giving feedback
+                        messages.append({
+                            "role": "system",
+                            "content": "ERROR: You must make a function call during the execute step. Please try again and make sure to use the appropriate tool function."
+                        })
+                        continue
 
                 if current_step == "result":
                     print(f"🤖: {no_tool_response.get("content")}")
@@ -170,6 +209,6 @@ while True:
                     "content": json.dumps(no_tool_response)
                 })
 
-                print(f"🧠: {no_tool_response.get("content")}")
+                print(f"🧠:step: {no_tool_response.get("step")} content: {no_tool_response.get("content")}")
             except Exception as e:
                 print(f"something went wrong with JSON {e}")
