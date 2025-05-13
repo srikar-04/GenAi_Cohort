@@ -5,7 +5,7 @@ import os
 
 gemini_api_key = os.environ["GEMINI_API_KEY"]
 gemini_base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
-model="gemini-2.0-flash-lite"
+model="gemini-2.0-flash"
 
 client = OpenAI(
     api_key=gemini_api_key,
