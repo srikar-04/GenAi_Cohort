@@ -1,4 +1,5 @@
 # Taking a document, initializing it, loading it and then splitting the doucment as characters using RecursiveCharacterTextSplitter or as docs.
+# Embed the splitted doc and then store the embeddings in qdrant db using docker container
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -9,6 +10,9 @@ from pathlib import Path
 import pprint
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
+
+from langchain_qdrant import QdrantVectorStore
+from qdrant_client import QdrantClient 
 
 
 api_key = os.environ["OPENAI_API_KEY"]
@@ -34,16 +38,25 @@ text_splitter = RecursiveCharacterTextSplitter(
     chunk_overlap=300,
 )
 
-texts = text_splitter.split_documents(documents=docs)
+splitted_text = text_splitter.split_documents(documents=docs)
 
-print(len(texts))
+# print(len(splitted_text))
 
 # for chunk in texts:
 #     pprint.pp(chunk.page_content)
 
-embeddings = OpenAIEmbeddings(
+# create embeddings and store in qdrant db
+embed = OpenAIEmbeddings(
     model="text-embedding-3-large",
     api_key=api_key
 )
 
-print(embeddings.embed_query("Hello"))
+vector_store = QdrantVectorStore.from_documents(
+    documents=[],
+    collection_name="learning_langchain",
+    url="http://localhost:6333",
+    embedding=embed,
+)
+
+vector_store.add_documents(documents=splitted_text)
+print("Injection done!!!!")
