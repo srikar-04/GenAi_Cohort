@@ -10,6 +10,7 @@ from pathlib import Path
 import pprint
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
+from openai import OpenAI
 
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient 
@@ -51,12 +52,41 @@ embed = OpenAIEmbeddings(
     api_key=api_key
 )
 
-vector_store = QdrantVectorStore.from_documents(
-    documents=[],
+# vector_store = QdrantVectorStore.from_documents(
+#     documents=[],
+#     collection_name="learning_langchain",
+#     url="http://localhost:6333",
+#     embedding=embed,
+# )
+
+# vector_store.add_documents(documents=splitted_text)
+# print("Injection done!!!!")
+
+retrival = QdrantVectorStore.from_existing_collection(
+    embedding=embed,
     collection_name="learning_langchain",
     url="http://localhost:6333",
-    embedding=embed,
 )
 
-vector_store.add_documents(documents=splitted_text)
-print("Injection done!!!!")
+relevant_chunks = retrival.similarity_search(
+    query="what is interrupt service routine in embedded systems?"
+)
+
+# print('RELEVANT CHUNKS: ', relevant_chunks)
+
+
+system_prompt = f"""
+    You are an helpful ai assistant who is expert in generating response based on the available context. Below is the avialble context, it contains a section called "page_content" which contains the main answer to user query.
+    available context: {relevant_chunks}
+"""
+
+client = OpenAI()
+
+response = client.responses.create(
+    model="gpt-4.1",
+    input="what is interrupt service routine? And tell me what are the resources that you have used to generate this response?",
+    max_output_tokens=500,
+    temperature=0.1,
+)
+
+print(response.output_text)
