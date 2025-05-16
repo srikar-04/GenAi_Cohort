@@ -3,6 +3,7 @@ load_dotenv()
 from openai import OpenAI
 import os
 import json
+import re
 
 gemini_api_key = os.environ["GEMINI_API_KEY"]
 gemini_base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
@@ -49,8 +50,8 @@ Wait for observation and resolve the user query based on the observation from th
 Follow the steps in sequence: "start", "plan", "execute", "monitor", and "result".
 
 Rules:
-1. Output should be strictly in JSON format.
-2. Strictly perform only one step at a time and wait for the next input.
+1. Output should be strictly in json format.
+2. Always perform only one step at a time and wait for the next input.
 3. Carefully analyze the user query.
 4. Donot wrap the response in a code block or fences
 5. Tool call MUST happen only in the "execute" step. During this step, you must invoke the correct function using the OpenAI tool call format. Do NOT just describe it — instead, respond with a tool call so that the tool is actually invoked.
@@ -80,59 +81,70 @@ Tools:
 
 messages = [
     {"role":"developer","content":system_prompt},
-    {"role": "assistant", "content": json.dumps({
-        "step": "start",
-        "content": "The user is asking about the weather in New York.",
-        "function": "null",
-        "input": "null"
-    })},
-    {"role": "assistant", "content": json.dumps({"step": "plan", "content": "To answer the user's question, I need to use the `get_weather` function to retrieve the weather information for New York.", "function": "null", "input": "null"})},
-    {
-        "role": "assistant",
-        "content": "ERROR: there is no tool call happened in execute step. Select and make an appropriate tool call"
-    },
-    {"role": "assistant", "content": json.dumps({"step": "plan", "content": "To get the weather in New York, I need to use the `get_weather` function.", "function": "null", "input": "null"})},
 ]
 
-# while True:
-user_query = input("> ")
-messages.append({
-    "role": "user",
-    "content": user_query
-})
+while True:
+    user_query = input("> ")
+    messages.append({
+        "role": "user",
+        "content": user_query
+    })
 
-# while True:
-result = client.chat.completions.create(
-    model=model,
-    messages=messages,
-    temperature=0.2,
-    tools=tools,
-)
-try:
-    # contains function_call=None, tool_calls=None
-    response = result.choices[0].message 
-    # parsed_response = json.loads(result.choices[0].message.content) # contains "step" and "content"
-    print(response)
+    while True:
+        result = client.chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=0.2,
+            tools=tools,
+        )
 
-    if json.loads(response.content).get("step") == "execute":
-        if response.tool_calls == None:
-            messages.append({
-                "role": "system",
-                "content": "ERROR: You must make a function call during the execute step. Please try again and make sure to use the appropriate tool function."
-            })
-            print("No tool calls present")
-            exit()
+        try:
+            response = result.choices[0].message
+            print(f"INITIAL RESPONSE : {response}")
 
-    if response.tool_calls:
-        print('tools is available !!')
-        print(response.tool_calls)
-    elif response.function_call:
-        print("function call is present")
-        print(response.function_call)
-    else:
-        print("------------- still there is no tool call --------------------")
-        print(response.content)
-    # continue
-except Exception as e:
-    print(f"messed up with json: {e}")
-    # break
+            # Check if content exists before processing
+            if response.content is not None:
+                response_text = response.content
+                # Clean possible JSON fences
+                cleaned = re.sub(r"```json|```", "", response_text.strip())
+                parsed_response = json.loads(cleaned)
+                
+                step = parsed_response.get("step")
+                content = parsed_response.get("content")
+
+                if step == "execute":
+                    if response.tool_calls == None:
+                        messages.append(
+                            {
+                                "role": "assitant",
+                                "content": "ERROR: Tool call must happen in the execute step. Choose an appropriate tool and call it."
+                            }
+                        )
+                    continue
+
+                messages.append({
+                    "role": "assistant",
+                    "content": json.dumps(parsed_response)
+                })
+                print(f"🧠: STEP: {step} CONTENT: {content}")
+                continue
+                
+            else:
+                print("Response content is None")
+                # Check for tool_calls directly
+                if response.tool_calls:
+                    print("✅ tool_calls detected")
+                    print(f"tool_calls: {response.tool_calls}")
+                    break  # Exit the inner loop
+                elif response.function_call:
+                    print("✅ function_call detected")
+                    print(f"function_call: {response.function_call}")
+                    break  # Exit the inner loop
+                else:
+                    print("No content and no tool calls")
+                    # You might want to add some handling here
+                    break  # Or continue based on your logic
+
+        except Exception as e:
+            print(f"JSON error: {e}")
+            break
