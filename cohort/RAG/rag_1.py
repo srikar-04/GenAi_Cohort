@@ -35,13 +35,13 @@ else:
 # pprint.pp(docs[40].__dict__)
 
 text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=5000,
-    chunk_overlap=300,
+    chunk_size=1000,
+    chunk_overlap=200,
 )
 
-splitted_text = text_splitter.split_documents(documents=docs)
+splitted_text = text_splitter.split_documents(docs)
 
-# print(len(splitted_text))
+print(len(splitted_text))
 
 # for chunk in texts:
 #     pprint.pp(chunk.page_content)
@@ -60,7 +60,7 @@ embed = OpenAIEmbeddings(
 # )
 
 # vector_store.add_documents(documents=splitted_text)
-# print("Injection done!!!!")
+print("Injection done!!!!")
 
 retrival = QdrantVectorStore.from_existing_collection(
     embedding=embed,
@@ -68,23 +68,33 @@ retrival = QdrantVectorStore.from_existing_collection(
     url="http://localhost:6333",
 )
 
+user_query = input(">> ")
+
 relevant_chunks = retrival.similarity_search(
-    query="what is interrupt service routine in embedded systems?"
+    query=user_query
 )
 
-# print('RELEVANT CHUNKS: ', relevant_chunks)
+# print('RELEVANT CHUNKS: ', len(relevant_chunks))
+# for chunk in relevant_chunks:
+#     print(f"\n\n PAGE_CONTENT: {chunk.page_content} \n\n\n")
 
 
 system_prompt = f"""
-    You are an helpful ai assistant who is expert in generating response based on the available context. Below is the avialble context, it contains a section called "page_content" which contains the main answer to user query.
-    available context: {relevant_chunks}
+You are a helpful AI assistant. Analyze the user's query and generate a response based only on the context provided below.
+You must ONLY use the text inside the "Available Context" section below to answer the user's question.
+Available Context:
+{''.join([doc.page_content for doc in relevant_chunks])}
+
+Rules:
+- If the question cannot be answered using the context, respond with: "I'm sorry, but I don't have that information in the provided context."
+- Do not use your own knowledge, even if you know the answer.
 """
 
 client = OpenAI()
 
 response = client.responses.create(
     model="gpt-4.1",
-    input="what is interrupt service routine? And tell me what are the resources that you have used to generate this response?",
+    input=user_query,
     max_output_tokens=500,
     temperature=0.1,
 )
