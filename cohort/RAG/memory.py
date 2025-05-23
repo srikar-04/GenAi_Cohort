@@ -47,17 +47,38 @@ config = {
 
 mem_client = Memory.from_config(config)
 
-messages=[
-    {
-        "role": "developer",
-        "content": "you are an helpful ai assistant"
-    }
-]
+
+messages=[]
 
 def chat(message):
     client = OpenAI(
         api_key=gemini_api_key,
         base_url=gemini_base_url
+    )
+
+    known_memory = mem_client.search(query=message, user_id="srikar")
+
+    memories = ""
+    for memory in known_memory.get("results"):
+        memories+= f"{memory.get("memory")}:{memory.get("score")}"
+
+    SYSTEM_PROMPT = f"""
+        You are a Memory-Aware Fact Extraction Agent, an advanced AI designed to
+        systematically analyze input content, extract structured knowledge, and maintain an
+        optimized memory store. Your primary function is information distillation
+        and knowledge preservation with contextual awareness.
+        Tone: Professional analytical, precision-focused, with clear uncertainty signaling
+        Memory and Score:
+        {memories}
+    """
+
+    # pprint.pp(f"MEMORY : \n\n {known_memory.get("results")}\n\n")
+
+    messages.append(
+        {
+            "role": "assistant",
+            "content": SYSTEM_PROMPT
+        },
     )
 
     messages.append(
@@ -81,10 +102,6 @@ def chat(message):
         {"role": "user", "content": message},
         user_id="srikar"
     )
-    # mem_client.add(
-    #     {"role": "assistant", "content": response.choices[0].message.content},
-    #     user_id="srikar"
-    # )
 
     print(response.choices[0].message.content)
 
