@@ -7,15 +7,16 @@ import os
 import pickle
 from langchain_community.document_loaders import PyPDFLoader
 from pathlib import Path
-import pprint
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from openai import OpenAI
 
-from langchain_qdrant import QdrantVectorStore
-from qdrant_client import QdrantClient 
 
-from langchain_community.vectorstores import Qdrant
+from qdrant_client import QdrantClient 
+from langchain_qdrant import Qdrant
+
+from langchain_openai import ChatOpenAI
+from langchain.schema import SystemMessage, HumanMessage
 
 
 api_key = os.environ["OPENAI_API_KEY"]
@@ -43,7 +44,7 @@ text_splitter = RecursiveCharacterTextSplitter(
 
 splitted_text = text_splitter.split_documents(docs)
 
-print(len(splitted_text))
+# print(len(splitted_text))
 
 # create embeddings and store in qdrant db
 embed = OpenAIEmbeddings(
@@ -61,133 +62,86 @@ need_ingestion = (
 )
 
 if need_ingestion:
-    docs = []
 
     Qdrant.from_documents(
-        documents=docs,
+        documents=splitted_text,
         embedding=embed,
         url="http://localhost:6333",
         collection_name="embedded-system-rag",
+        qdrant_client = qdrant_client
     )
     print(f"✅ Ingested {len(docs)} chunks into embedded-system-rag")
 else:
     print(f"⏭ Skipping ingest; embedded-system-rag already has data")
 
 
-qdrant_vs = Qdrant(
-    url="http://localhost:6333",
+qdrant_vs = Qdrant(                                     # USE qdrant_vector_store THIS IS DEPRICATED
+    client=qdrant_client,
     collection_name="embedded-system-rag",
-    embedding=embed,
+    embeddings=embed
 )
 retriever = qdrant_vs.as_retriever()
 
 user_query = input(">> ")
 
-relevant_docs = retriever.get_relevant_documents(user_query)
+relevant_docs = retriever.get_relevant_documents(user_query)   # USE invoke() method THIS IS DEPRICATED
 
 context = "\n\n---\n\n".join(doc.page_content for doc in relevant_docs)
 
-print(f"CONTEXT : {context}")
+# print(f"CONTEXT LENGTH : {context}")
 
-# system_prompt = f"""
-#     You are an expert assistant. Answer using *only* the context below.
-#     If the answer can’t be found, say “I’m sorry, but I don't have that information in the provided context.”
+system_prompt = f"""
+    You are an expert assistant. Answer using *only* the context below.
+    If the answer can’t be found, say “I’m sorry, but I don't have that information in the provided context.”
 
-#     AVAILABLE CONTEXT: 
-#     {context}
-# """
+    AVAILABLE CONTEXT: 
+    {context}
+"""
 
-# client = OpenAI()
+client = OpenAI()
 
-# response = client.responses.create(
-#     model="gpt-4.1",
-#     input=user_query,
-#     max_output_tokens=500,
-#     temperature=0.1,
+messages = [
+    {
+        "role": "developer",
+        "content": system_prompt
+    }
+]
+
+messages.append({
+    "role": "user",
+    "content": user_query
+})
+
+response = client.responses.create(
+    model="gpt-4.1",
+    input=messages,
+    max_output_tokens=500,
+    temperature=0.1,
+)
+
+print("\n=== Answer ===\n")
+print(response.output_text)
+
+
+# PROMPT TEMPLATES OF LANGCHAIN
+
+# system_message = SystemMessage(
+#     content=(
+#         "You are an expert assistant. "
+#         "Answer the question *only* using the information in the context. "
+#         "If the answer is not in the context, reply exactly: "
+#         "'I'm sorry, but I don't have that information in the provided context.'"
+#     )
 # )
+
+# # 2) Include the retrieved context + the user’s query
+# human_message = HumanMessage(
+#     content=f"Context:\n{context}\n\nQuestion:\n{user_query}"
+# )
+
+# # 3) Call the chat model with *only* those messages
+# llm = ChatOpenAI(model="gpt-4", api_key=api_key, temperature=0)
+# response = llm([system_message, human_message])
 
 # print("\n=== Answer ===\n")
-# print(response.output_text)
-
-
-
-
-
-
-
-# import os
-# import pickle
-# from pathlib import Path
-
-# from dotenv import load_dotenv
-# from qdrant_client import QdrantClient
-
-# from langchain_community.document_loaders import PyPDFLoader
-# from langchain_text_splitters import RecursiveCharacterTextSplitter
-# from langchain_openai import OpenAIEmbeddings
-# # from langchain_community.vectorstores import Qdrant
-# from langchain_qdrant import Qdrant
-
-# # ─── Configuration ─────────────────────────────────────────────────────────────
-
-# load_dotenv()
-# OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-# PDF_PATH       = Path(__file__).parent / "introduction-to-embedded-systems.pdf"
-# CACHE_PATH     = Path("docs_cache.pkl")
-# QDRANT_URL     = "http://localhost:6333"
-# COLLECTION     = "embedded-system-rag"
-
-# # ─── 1) Load or cache PDF chunks ────────────────────────────────────────────────
-
-# if CACHE_PATH.exists():
-#     docs = pickle.loads(CACHE_PATH.read_bytes())
-# else:
-#     loader   = PyPDFLoader(str(PDF_PATH))
-#     raw_docs = loader.load()
-#     splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-#     docs      = splitter.split_documents(raw_docs)
-
-#     CACHE_PATH.write_bytes(pickle.dumps(docs))
-#     print(f"🔖 Cached {len(docs)} chunks")
-
-# print(f"Total chunks to ingest (if needed): {len(docs)}")
-
-# # ─── 2) Prepare embeddings & Qdrant client ────────────────────────────────────
-
-# embeddings = OpenAIEmbeddings(model="text-embedding-3-large", api_key=OPENAI_API_KEY)
-# qclient    = QdrantClient(url=QDRANT_URL)
-
-# # ─── 3) Idempotent ingestion check ─────────────────────────────────────────────
-
-# existing = [c.name for c in qclient.get_collections().collections]
-# empty    = qclient.count(collection_name=COLLECTION).count if COLLECTION in existing else 0
-
-# need_ingest = (COLLECTION not in existing) or (empty == 0)
-
-# if need_ingest:
-#     Qdrant.from_documents(
-#         documents=docs,
-#         embedding=embeddings,
-#         url=QDRANT_URL,
-#         collection_name=COLLECTION,
-#     )
-#     print(f"✅ Ingested {len(docs)} chunks into '{COLLECTION}'")
-# else:
-#     print(f"⏭️  Skipping ingest; '{COLLECTION}' already has data ({empty} vectors)")
-
-# # ─── 4) Build retriever ───────────────────────────────────────────────────────
-
-# vectorstore = Qdrant(
-#     collection_name=COLLECTION,
-#     embeddings=embeddings,
-# )
-# retriever = vectorstore.as_retriever()
-
-# # ─── 5) Query & assemble context ──────────────────────────────────────────────
-
-# query = input("\n🔎 Your question: ")
-# relevant_docs = retriever.get_relevant_documents(query)
-
-# context = "\n\n---\n\n".join(doc.page_content for doc in relevant_docs)
-# print("\n=== CONTEXT ===\n")
-# print(context)
+# print(response.content)
