@@ -73,15 +73,9 @@ qdrant_vector_store = QdrantVectorStore(
 
 retriever = qdrant_vector_store.as_retriever()
 
-user_query = input(">> ")
+client = OpenAI()
 
-relevant_docs = retriever.invoke(user_query)
-
-context = "\n\n---\n\n".join(doc.page_content for doc in relevant_docs)
-
-# print(context)
-
-system_prompt = f"""
+system_prompt = """
     You are an expert assistant. Answer using *only* the context below.
     If the answer can’t be found, say “I’m sorry, but I don't have that information in the provided context.”
 
@@ -89,26 +83,33 @@ system_prompt = f"""
     {context}
 """
 
-client = OpenAI()
+while True: 
+    user_query = input(">> ")
 
-messages = [
-    {
-        "role": "developer",
-        "content": system_prompt
-    }
-]
+    relevant_docs = retriever.invoke(user_query)
 
-messages.append({
-    "role": "user",
-    "content": user_query
-})
+    context = "\n\n---\n\n".join(doc.page_content for doc in relevant_docs)
 
-response = client.responses.create(
-    model="gpt-4.1",
-    input=messages,
-    max_output_tokens=500,
-    temperature=0.1,
-)
+    # print(context)
+    formatted_prompt = system_prompt.format(context=context)
 
-print("\n=== Answer ===\n")
-print(response.output_text)
+    messages = [
+        {
+            "role": "developer",
+            "content": formatted_prompt
+        },
+        {
+            "role": "user",
+            "content": user_query
+        }
+    ]
+
+    response = client.responses.create(
+        model="gpt-4.1",
+        input=messages,
+        max_output_tokens=500,
+        temperature=0.1,
+    )
+
+    print("\n=== Answer ===\n")
+    print(response.output_text)
