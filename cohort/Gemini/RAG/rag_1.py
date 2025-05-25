@@ -13,7 +13,6 @@ from langchain_openai import OpenAIEmbeddings
 from openai import OpenAI
 
 from langchain_qdrant import QdrantVectorStore
-from langchain.chains import retrieval_qa
 from qdrant_client import QdrantClient 
 
 
@@ -40,10 +39,10 @@ text_splitter = RecursiveCharacterTextSplitter(
     chunk_overlap=200,
 )
 
-splitted_text = text_splitter.split_documents(docs)
+splitted_text = text_splitter.create_documents([docs])
 
-print(len(splitted_text))
-# print(splitted_text)  # CONTAINS PAGE_CONTENT <<---
+# print(len(splitted_texpt))
+print(splitted_text)
 
 # for chunk in texts:
 #     pprint.pp(chunk.page_content)
@@ -64,42 +63,21 @@ embed = OpenAIEmbeddings(
 # vector_store.add_documents(documents=splitted_text)
 print("Injection done!!!!")
 
+# retrival = QdrantVectorStore.from_existing_collection(
+#     embedding=embed,
+#     collection_name="learning_langchain",
+#     url="http://localhost:6333",
+# )
 
-
-retrival = QdrantVectorStore.from_existing_collection(
-    embedding=embed,
-    collection_name="learning_langchain",
-    url="http://localhost:6333",
-)
-
-qa = retrieval_qa(
-    llm=OpenAI(temperature=0.1),
-    chain_type="stuff",            # or "map_reduce" / "refine"
-    retriever=retrival.as_retriever(),
-    return_source_documents=True,  # <-- key to get back your PDF chunks
-)
-
-user_query = input(">> ")
-
-result = qa({"query": user_query})
-
-# 4) unpack results
-print("\n=== ANSWER ===\n")
-print(result["result"])
-
-print("\n=== SOURCES ===")
-for idx, doc in enumerate(result["source_documents"], 1):
-    print(f"\nChunk {idx} (metadata={doc.metadata}):\n{doc.page_content[:300]}…")
+# user_query = input(">> ")
 
 # relevant_chunks = retrival.similarity_search(
 #     query=user_query
 # )
 
-# print(f"RELEVANT CHUNKS LENGTH : {len(relevant_chunks)}")
-# # print(relevant_chunks[0].page_content)
+# print('RELEVANT CHUNKS: ', len(relevant_chunks))
 # for chunk in relevant_chunks:
-#     print(f"CHUNKS : \n \n {chunk.page_content} \n \n \n")
-
+#     print(f"\n\n PAGE_CONTENT: {chunk.page_content} \n\n\n")
 
 
 # system_prompt = f"""
@@ -108,10 +86,10 @@ for idx, doc in enumerate(result["source_documents"], 1):
 # Available Context:
 # {''.join([doc.page_content for doc in relevant_chunks])}
 
-# # Rules:
-# # - If the question cannot be answered using the context, respond with: "I'm sorry, but I don't have that information in the provided context."
-# # - Do not use your own knowledge, even if you know the answer.
-# # """
+# Rules:
+# - If the question cannot be answered using the context, respond with: "I'm sorry, but I don't have that information in the provided context."
+# - Do not use your own knowledge, even if you know the answer.
+# """
 
 # client = OpenAI()
 
