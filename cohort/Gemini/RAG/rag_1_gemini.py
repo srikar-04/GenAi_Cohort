@@ -61,6 +61,7 @@ if need_ingestion:
         collection_name = COLLECTION,
         url = URL,
     )
+    print(f"Ingested data into {COLLECTION}")
 else:
     print(f"⏭ Skipping ingest; {COLLECTION} already has data")
 
@@ -109,8 +110,8 @@ while True:
 
     response = client.chat.completions.create(
         model="gemini-2.0-flash",
-        input=messages,
-        max_output_tokens=500,
+        messages=messages,
+        max_tokens=500,
         temperature=0.1,
     )
 
