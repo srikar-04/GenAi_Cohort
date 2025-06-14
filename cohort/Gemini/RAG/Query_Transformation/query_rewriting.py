@@ -13,7 +13,31 @@ client = OpenAI(
 )
 
 def rewrite_query(query):
-    return f"THIS QUERY IS TRANSFORMED {query}"
+
+    prompt = f"""
+        You are given with an abstract user query. Rewrite the query to make it more specific and context rich, still keeping the user's intent.
+
+        Original Query: {query}
+
+        RULES : 
+        - Donot hellucinate anything.
+        - Respond with only single re-written query as response
+        - Donot give multiple queries
+    """
+
+    response = client.chat.completions.create(
+        model=gemini_model,
+        messages=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
+    )
+
+    return response.choices[0].message.content
+
+    # return f"THIS QUERY IS TRANSFORMED {qp
 
 
 tools = [{
@@ -59,6 +83,8 @@ system_prompt = f"""
 
     Available tools are given below
     {available_tools}
+
+    After executing the tool, the final response from the tool will be given to you. Based on that context-rich query, generate a perfect answer.
 """
 
 messages = [
@@ -82,8 +108,7 @@ response = client.chat.completions.create(
     tools=tools,
 )
 
-# print(response.choices[0].message.content)
-# print(response.choices[0].message)
+
 
 result = response.choices[0].message
 
@@ -100,6 +125,20 @@ if result.tool_calls:
     if function_name:
         function_response = function_name(**args)
         print(f"FINAL RESPONSE 🤖: {function_response}")
+        messages.append(
+            {
+                "role": "tool",
+                "tool_call_id": result.tool_calls[0].id,
+                "name": name,
+                "content": function_response
+            }
+        )
+
+        response = client.chat.completions.create(
+            model=gemini_model,
+            messages=messages
+        )
+        print(f"FINAL RESPONSE FROM THE LLM IS 🤖 : {response.choices[0].message.content}")
     else:
         print("Function is unavailable!!!")
 else:
