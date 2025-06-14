@@ -125,15 +125,15 @@ if result.tool_calls:
     if function_name:
         function_response = function_name(**args)
         print(f"FINAL RESPONSE 🤖: {function_response}")
-        messages.append(
-            {
-                "role": "tool",
-                "tool_call_id": result.tool_calls[0].id,
-                "name": name,
-                "content": function_response
-            }
-        )
 
+        messages.append(result) 
+
+        messages.append({                               # append result message
+            "role": "tool",
+            "tool_call_id": result.tool_calls[0].id,
+            "content": str(function_response)
+        })
+        
         response = client.chat.completions.create(
             model=gemini_model,
             messages=messages
