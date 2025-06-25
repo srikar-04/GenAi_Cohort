@@ -57,7 +57,7 @@ few_shot_prompt = FewShotChatMessagePromptTemplate(
 final_prompt = ChatPromptTemplate.from_messages(
     [
         system_message,
-        MessagesPlaceholder(variable_name="examples"),
+        MessagesPlaceholder(variable_name="examples"),  # inserting a list of messages dynamically at runtime
         ("human", "{input}")
     ]
 )
