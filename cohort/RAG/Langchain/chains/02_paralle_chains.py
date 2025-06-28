@@ -5,6 +5,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnableParallel
 
 
 if "GOOGLE_API_KEY" not in os.environ and "GEMINI_API_KEY" in os.environ:
@@ -39,7 +40,7 @@ input_variables=["summary", "quiz"]
 
 parser = StrOutputParser()
 
-parallel_chain = (
+parallel_chain = RunnableParallel(
     {
         "summary": prompt1 | model1 | parser,
         "quiz": prompt2 | model2 | parser
