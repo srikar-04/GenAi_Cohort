@@ -122,7 +122,7 @@ embed = OpenAIEmbeddings(
     api_key=openai_api_key
 )
 
-print(f"SPLITTED TEXT : {len(splitted_text)}")
+# print(f"SPLITTED TEXT : {len(splitted_text)}")
 
 # embed = GoogleGenerativeAIEmbeddings(
 #     model="gemini-embedding-exp-03-07"
@@ -210,20 +210,70 @@ while True:
 
         # print('TOOL RESPONSE TYPE : ', type(tool_response))  # CONFIRMED THAT THIS IS OF LIST TYPE
 
-        print(f'🤖: {tool_response} {len(tool_response)} \n \n \n \n ')
+        # print(f'🤖: {tool_response} {len(tool_response)} \n \n \n \n ')
 
         for query in tool_response:
             docs = retriever.invoke(query)
             relevant_docs.append(docs)
 
-        # print(f"RELEVANT DOCS: {relevant_docs[:5]}")
-        for docs in relevant_docs:
-            # print(f"{docs} \n \n \n \n ")
-            # print( f'{index}. {doc.page_content}' for index, doc in enumerate(docs) )
-            # print(doc for doc in docs)
-            context = "\n\n---\n\n".join(doc.page_content for doc in docs)
+        # flattening 2d array into 1d array
 
-        print("THIS IS THE FINAL CONTEXT : 💀", context)
+        one_d = [item for first_level in relevant_docs for item in first_level]
 
+        final_doc_with_duplicate = [doc for doc in one_d]
+
+        # print(f"final page content 💀: {final_doc}")
+        print("DUPLICATE DOCS LENGTH : ", len(final_doc_with_duplicate))
+
+        # Removing all the duplicate docs
+        unique_docs_dict = {}
+
+        for doc in final_doc_with_duplicate:
+            key = doc.page_content
+            if key not in unique_docs_dict:
+                unique_docs_dict[key] = doc
+
+        final_unique_docs = list(unique_docs_dict.values())
+
+        final_docs_page_content = "\n \n".join(content.page_content for content in final_unique_docs)
+
+        print(f'UNIQUE DOCS LENGHT : {len(final_unique_docs)}')
+
+        final_system_prompt = """
+            You are an helpful and clever ai assistant who is an expert in answering user queries along with the given context. 
+            
+            This is the available context for answering the query.
+            {available_context}
+
+            Rank the context according to the user query and generate your final response only using the context available.
+
+            Rules: 
+            - Your answers should be based on the availbe context.
+            - When the question is not relevent to the context, tell the user that it is not in the context or user is asking some out of context question.
+            - Donot hellucinate anything.
+        """
+
+        final_prompt = ChatPromptTemplate.from_messages([
+            ("system", final_system_prompt),
+            (
+                "human",
+                """
+                    This is the user's query:
+                    {user_query}
+                """
+            )
+        ])
+
+        final_chain = final_prompt | model
+
+        result = final_chain.invoke(
+            {
+                "user_query": user_query,
+                "available_context": final_docs_page_content
+                # "available_context": final_unique_docs
+            }
+        )
+
+        print(f"FINAL RESULT 💀: {result}")
     else :
         print(f'🤖: {result.content}')
