@@ -103,7 +103,13 @@ system_prompt = PromptTemplate.from_template(
 model_with_tools = model.bind_tools(tools)
 
 while True:
-    user_query = input("> ")
+    try:
+        user_query = input("> ")
+        if not user_query.strip():
+            print("Please enter your query")
+            continue
+    except KeyboardInterrupt:
+        break
 
     prompt = ChatPromptTemplate.from_messages(
         [
