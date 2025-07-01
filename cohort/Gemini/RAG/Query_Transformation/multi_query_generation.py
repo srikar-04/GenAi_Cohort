@@ -102,33 +102,34 @@ system_prompt = PromptTemplate.from_template(
 
 model_with_tools = model.bind_tools(tools)
 
-user_query = input("> ")
+while True:
+    user_query = input("> ")
 
-prompt = ChatPromptTemplate.from_messages(
-    [
-        ("system", system_prompt.format(available_tools = tools)),
-        ("human", user_query)
-    ]
-)
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", system_prompt.format(available_tools = tools)),
+            ("human", user_query)
+        ]
+    )
 
-chain1 = prompt | model_with_tools
+    chain1 = prompt | model_with_tools
 
-result = chain1.invoke({})
+    result = chain1.invoke({})
 
 
-if result.tool_calls:
-    tool_data = result.tool_calls[0]
+    if result.tool_calls:
+        tool_data = result.tool_calls[0]
 
-    function_name_string = tool_data.get("name").strip()
+        function_name_string = tool_data.get("name").strip()
 
-    function_object = available_tools[function_name_string].func
+        function_object = available_tools[function_name_string].func
 
-    function_args = tool_data.get('args')
+        function_args = tool_data.get('args')
 
-    tool_response = function_object(**function_args)
+        tool_response = function_object(**function_args)
 
-    # print('TOOL RESPONSE TYPE : ', type(tool_response))  # CONFIRMED THAT THIS IS OF LIST TYPE
+        # print('TOOL RESPONSE TYPE : ', type(tool_response))  # CONFIRMED THAT THIS IS OF LIST TYPE
 
-    print(f'🤖: {tool_response}')
-else :
-    print(f'🤖: {result.content}')
+        print(f'🤖: {tool_response}')
+    else :
+        print(f'🤖: {result.content}')
