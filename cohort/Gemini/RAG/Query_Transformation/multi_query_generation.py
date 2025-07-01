@@ -129,4 +129,6 @@ if result.tool_calls:
 
     # print('TOOL RESPONSE TYPE : ', type(tool_response))  # CONFIRMED THAT THIS IS OF LIST TYPE
 
-    print('TOOL RESPONSE : ', tool_response)
+    print(f'🤖: {tool_response}')
+else :
+    print(f'🤖: {result.content}')
