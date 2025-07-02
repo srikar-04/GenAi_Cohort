@@ -17,6 +17,8 @@ from langchain_openai import OpenAIEmbeddings
 from qdrant_client import QdrantClient 
 from langchain_qdrant import QdrantVectorStore
 
+from langchain_community.retrievers import BM25Retriever
+
 if "GOOGLE_API_KEY" not in os.environ and "GEMINI_API_KEY" in os.environ:
     os.environ["GOOGLE_API_KEY"] = os.environ["GEMINI_API_KEY"]
 
@@ -235,9 +237,18 @@ while True:
 
         final_unique_docs = list(unique_docs_dict.values())
 
-        final_docs_page_content = "\n \n".join(content.page_content for content in final_unique_docs)
 
         print(f'UNIQUE DOCS LENGHT : {len(final_unique_docs)}')
+
+        #  RANKING DE-DUPLICATED DOCS
+
+        ranking_retreiver = BM25Retriever.from_documents(final_unique_docs, k=4)
+
+        final_ranked_docs = ranking_retreiver.invoke(user_query)
+
+        print(f"FINAL RANKED DOCS LENGHT: {len(final_ranked_docs)}")
+
+        final_ranked_docs_page_content = "\n \n".join(content.page_content for content in final_ranked_docs)
 
         final_system_prompt = """
             You are an helpful and clever ai assistant who is an expert in answering user queries along with the given context. 
@@ -269,11 +280,11 @@ while True:
         result = final_chain.invoke(
             {
                 "user_query": user_query,
-                "available_context": final_docs_page_content
-                # "available_context": final_unique_docs
+                "available_context": final_ranked_docs_page_content
+                # "available_context": final_ranked_docs
             }
         )
 
-        print(f"FINAL RESULT 💀: {result}")
+        print(f"FINAL RESULT 💀: {result.content}")
     else :
         print(f'🤖: {result.content}')
