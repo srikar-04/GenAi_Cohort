@@ -4,10 +4,18 @@ import os
 from openai import OpenAI
 import json
 import requests
+import re
 
-api_key = os.environ["OPENAI_API_KEY"]
+# api_key = os.environ["OPENAI_API_KEY"]
 
-client = OpenAI()
+gemini_api_key = os.environ["GEMINI_API_KEY"]
+gemini_base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
+model = "gemini-2.0-flash"
+
+client = OpenAI(
+    api_key=gemini_api_key,
+    base_url=gemini_base_url,
+)
 
 def get_weather(city: str) -> str:
     url = f"https://wttr.in/{city}?format=%C+%t"
@@ -18,20 +26,23 @@ def get_weather(city: str) -> str:
     else:
         return "something went wrong with weather api"
 
+
 tools = [
     {
         "type": "function",
-        "name": "get_weather", 
-        "description": "Get current temperature for a given location.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "city": {
-                    "type": "string",
-                    "description": "City to find weather for eg., new york."
-                }
+        "function": {
+            "name": "get_weather",
+            "description": "Get the weather in a given location",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "city": {
+                        "type": "string",
+                        "description": "The city to find weather for eg., new york",
+                    },
+                },
+                "required": ["city"],
             },
-            "required": ["city"]
         }
     }
 ]
@@ -49,7 +60,7 @@ For the given user query and available tools, plan execution. Based on planning,
 Rules:
 1. Output should be strictly in JSON format.
 2. Carefully analyze the user query.
-3. Donot wrap the response in a code block or fences
+3. IMPORTANT: Donot wrap the response in a code block or fences
 4. NEVER provide an answer that requires tool information without first calling the appropriate tool.
 
 Output JSON Format:
@@ -84,18 +95,19 @@ messages.append({
     "content": user_query
 })
 
-response = client.responses.create(
-    model="gpt-4.1",
-    input=messages,
-    max_output_tokens=500,
+response = client.chat.completions.create(
+    messages=messages,
+    model=model,
+    max_tokens=500,
     temperature=0.1,
     tools=tools,
-    tool_choice="auto",
 )
 
-tool_call = response.output[0].content[0].text
+tool_call_code = response.choices[0].message.content
 
-# print(f"INITIAL OUTPUT Type: {type(tool_call)}")
+tool_call = re.sub(r"^```[a-zA-Z]*\n|```$", "", tool_call_code.strip(), flags=re.MULTILINE)
+
+# print(f"INITIAL OUTPUT Type: {tool_call}")
 
 try:
     tool_call_json = json.loads(tool_call)
