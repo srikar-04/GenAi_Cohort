@@ -181,12 +181,12 @@ for cluster_name, docs_in_cluster in cluster_chunk_names.items():
 
         if max_sim > 0.85:
             print(f"✅ Matched existing collection: {exsisting_collection_names[max_idx]} ({max_sim:.2f})")
-            qdrant_vector_store = QdrantVectorStore.from_documents(
-                documents=docs_in_cluster,
-                embedding=embed,
-                collection_name = exsisting_collection_names[max_idx],
-                url = URL,
-            )
+            # qdrant_vector_store = QdrantVectorStore.from_documents(
+            #     documents=docs_in_cluster,
+            #     embedding=embed,
+            #     collection_name = exsisting_collection_names[max_idx],
+            #     url = URL,
+            # )
         else:
             print('⚒️ Creating New Collection')
             qdrant_vector_store = QdrantVectorStore.from_documents(
