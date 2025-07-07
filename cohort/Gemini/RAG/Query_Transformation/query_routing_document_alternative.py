@@ -61,6 +61,11 @@ embed = OpenAIEmbeddings(
     api_key=openai_api_key
 )
 
+class CollectionName(BaseModel):
+    collection_name: str = Field('collection name based on the avaible summary text of the content')
+
+collection_output_parser = PydanticOutputParser(pydantic_object=CollectionName)
+
 # 1. EMBEDDING THE SPLITTED TEXT : 
 embeddings  = embed.embed_documents([content.page_content for content in splitted_text])
 
@@ -78,11 +83,50 @@ for idx, cluster_id in enumerate(cluster_ids):
     clustered_chunks.setdefault(cluster_id, []).append(splitted_text[idx])
 print('MAPPED SPLITTED TEXT TO SPECIFIC CLUSTERS ✅')
 
+collection_prompt = PromptTemplate(
+    template= """
+        Generate a short collection name for the following texts: {summary_text}
+        Generate only a single collection name and do not hellucinate.
+
+        example -1:
+
+        HUMAN : 
+
+        summary_text : "Finetuning is the process of adapting a model to a specific task by further
+        training the whole model or part of the model."
+
+        AI RESPONSE : 
+        {{
+            "collection_name": "fine-tuning"
+        }}
+
+        example -2 :
+        summary_text: " Prompt engineering refers to the process of crafting an instruction that gets
+        a model to generate the desired outcome."
+
+        AI RESPONSE : 
+        {{
+            "collection_name": "prompt-engineering"
+        }}
+        
+        Rules : 
+        1. Do not generate multiple collection names.
+        2. Do not hellucinate and follow the instructions
+        3. Work according to the pydantic model.
+        4. IMPORTANT : Repond only in json format.
+    """,
+    input_variables=["summary_text"]
+)
+
+collection_chain = collection_prompt | model | collection_output_parser
+
 # GENERATING A COLLECTION NAME FOR USING THE CLUSTER : 
 for cluster_id, doc_in_cluster in clustered_chunks.items():
     summary_text = "\n \n".join(doc.page_content for doc in doc_in_cluster)
-    cluster_name = model.invoke(f"Generate a short collection name for the following texts: {summary_text}")
-    print(f"CLUSTER {cluster_id} -> {cluster_name}")
+    cluster_name = collection_chain.invoke({
+        "summary_text": summary_text
+    })
+    print(f"CLUSTER {cluster_id} -> {cluster_name.collection_name}")
 
 # class CollectionName(BaseModel):
 #     collection_name: str = Field('meaningful collection name based on the context of the text')
