@@ -109,19 +109,17 @@ collection_prompt = PromptTemplate(
         {{
             "collection_name": "prompt-engineering"
         }}
+
+        Generate collection names that vary semantically.
         
         Rules : 
         1. Do not generate multiple collection names.
         2. Do not hellucinate and follow the instructions
         3. Work according to the pydantic model.
         4. IMPORTANT : Repond only in json format.
-
-        IMPORTANT:
-        - If matching an existing collection, output exactly as it is.
-        - Output ONLY in JSON as per pydantic model.
-        {exsisting_collections}
+        5. IMPORTANT : make sure that the collection name is different from the previous one. They both should vary sematically
     """,
-    input_variables=["summary_text", "exsisting_collections"]
+    input_variables=["summary_text"]
 )
 
 collection_chain = collection_prompt | model | collection_output_parser
@@ -149,11 +147,14 @@ for cluster_id, doc_in_cluster in clustered_chunks.items():
     summary_text = representative_doc.page_content
 
     cluster_name = collection_chain.invoke({
-        "summary_text": summary_text,
-        "exsisting_collections": cluster_chunk_names.keys()
+        "summary_text": summary_text
     })
 
-    cluster_chunk_names[cluster_name.collection_name] = doc_in_cluster
+    if cluster_name.collection_name in cluster_chunk_names:
+        cluster_chunk_names[cluster_name.collection_name].append(doc_in_cluster)
+    else:
+        cluster_chunk_names[cluster_name.collection_name] = doc_in_cluster
+    print(f"CLUSTER NAME FOR {cluster_id} -> {cluster_name.collection_name}")
 
-print(cluster_chunk_names.keys())
+print(list(cluster_chunk_names.keys()))
 
