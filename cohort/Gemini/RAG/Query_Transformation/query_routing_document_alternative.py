@@ -115,8 +115,13 @@ collection_prompt = PromptTemplate(
         2. Do not hellucinate and follow the instructions
         3. Work according to the pydantic model.
         4. IMPORTANT : Repond only in json format.
+
+        IMPORTANT:
+        - If matching an existing collection, output exactly as it is.
+        - Output ONLY in JSON as per pydantic model.
+        {exsisting_collections}
     """,
-    input_variables=["summary_text"]
+    input_variables=["summary_text", "exsisting_collections"]
 )
 
 collection_chain = collection_prompt | model | collection_output_parser
@@ -144,77 +149,11 @@ for cluster_id, doc_in_cluster in clustered_chunks.items():
     summary_text = representative_doc.page_content
 
     cluster_name = collection_chain.invoke({
-        "summary_text": summary_text
+        "summary_text": summary_text,
+        "exsisting_collections": cluster_chunk_names.keys()
     })
 
     cluster_chunk_names[cluster_name.collection_name] = doc_in_cluster
 
 print(cluster_chunk_names.keys())
 
- 
-# for cluster_id, doc_in_cluster in clustered_chunks.items():
-#     summary_text = "\n \n".join(doc.page_content for doc in doc_in_cluster)
-#     cluster_name = collection_chain.invoke({
-#         "summary_text": summary_text
-#     })
-#     print(f"CLUSTER {cluster_id} -> {cluster_name.collection_name}")
-
-# class CollectionName(BaseModel):
-#     collection_name: str = Field('meaningful collection name based on the context of the text')
-#     splitted_text: str = Field('text splitted using text splitter, categorizing under a collection name.')
-
-# class CollectionChunkList(RootModel[List[CollectionName]]):
-#     pass
-
-# system_prompt_collection = """
-#     You are an intelligent AI document categorizer. For each given text chunk, analyze the content deeply and assign a meaningful "collection_name" or category based on the topic or concept covered.
-
-#     At the end, after assigning proper names to every chunk, return all the chunks in a list
-
-#     Guidelines:
-#     - Create only 3-4 major categories overall to keep collections manageable.
-#     - Choose intuitive, short collection names (eg: 'AI Basics', 'ML Algorithms', 'Data Engineering', 'LLMs').
-#     - Do NOT hallucinate or generate irrelevant categories.
-#     - IMPORTANT: Donot create more than 4 collections.
-#     - return python list at the end.
-# """
-
-# collection_output_parser = PydanticOutputParser(pydantic_object=CollectionChunkList)
-
-
-# collection_prompt = ChatPromptTemplate.from_messages([
-#     ("system", system_prompt_collection),
-#     ("human", '{chunk}'),
-#     ("system", "{format_instructions}")
-# ])
-
-# collection_chain = collection_prompt | model | collection_output_parser
-
-# BATCH_SIZE = 50
-# total_chunks = len(splitted_text_page_content)
-# batches = math.ceil(total_chunks / BATCH_SIZE)
-
-# print(f"NO OF BATCHES : {batches}")
-
-# results = []
-
-# for i in range(3):
-#     start = i * BATCH_SIZE
-#     end = min((i+1)*BATCH_SIZE, total_chunks)
-#     chunk_batch = splitted_text_page_content[start:end]
-
-#     # chunk_text = "\n \n".join(chunk.page_content for chunk in chunk_batch)
-
-#     chunk_result = collection_chain.invoke(
-#         {
-#             "chunk": chunk_batch,
-#             "format_instructions": collection_output_parser.get_format_instructions()
-#         }
-#     )
-
-#     print(f"THIS IS THE TYPE OF CHUNK RESULT IN THE LOOP : {type(chunk_result)}")
-#     results.extend(chunk_result.root)
-
-# print(f"THIS IS THE TYPE OF FINAL RESULTS TYPE : {type(results)}")
-
-# print(results[0])
