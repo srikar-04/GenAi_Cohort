@@ -22,6 +22,7 @@ from langchain_qdrant import QdrantVectorStore
 from langchain_community.retrievers import BM25Retriever
 from langchain_openai import ChatOpenAI
 import math
+from sklearn.cluster import KMeans
 
 
 if "GOOGLE_API_KEY" not in os.environ and "GEMINI_API_KEY" in os.environ:
@@ -53,18 +54,35 @@ text_splitter = RecursiveCharacterTextSplitter(
 
 splitted_text = text_splitter.split_documents(docs)
 
-# print(f"SPLITTED TEXT TYPE {type(splitted_text[0])}")
-# print(f"SPLITTED TEXT TYPE {splitted_text[0]}")
-
-splitted_text_page_content = [content.page_content for content in splitted_text]
-
-# print(f"SPLITTED TEXT : {splitted_text_page_content[0]}")
-print(f"SPLITTED TEXT : {type(splitted_text_page_content[0])}")
+print(f"SPLITTED TEXT TYPE {type(splitted_text[0])}")
 
 embed = OpenAIEmbeddings(
     model="text-embedding-3-large",
     api_key=openai_api_key
 )
+
+# 1. EMBEDDING THE SPLITTED TEXT : 
+embeddings  = embed.embed_documents([content.page_content for content in splitted_text])
+
+print('CREATED EMBEDDINGS ✅')
+
+# 2. CLUSTER THE EMBEDDINGS : 
+kmeans = KMeans(n_clusters=4, random_state=42)
+cluster_ids = kmeans.fit_predict(embeddings)
+
+print('CREATED EMBEDDINGS CLUSTERS AND OBTAINED IDS ✅')
+
+# MAPPING CHUNKS TO CLUSTER IDS
+clustered_chunks = {}
+for idx, cluster_id in enumerate(cluster_ids):
+    clustered_chunks.setdefault(cluster_id, []).append(splitted_text[idx])
+print('MAPPED SPLITTED TEXT TO SPECIFIC CLUSTERS ✅')
+
+# GENERATING A COLLECTION NAME FOR USING THE CLUSTER : 
+for cluster_id, doc_in_cluster in clustered_chunks.items():
+    summary_text = "\n \n".join(doc.page_content for doc in doc_in_cluster)
+    cluster_name = model.invoke(f"Generate a short collection name for the following texts: {summary_text}")
+    print(f"CLUSTER {cluster_id} -> {cluster_name}")
 
 # class CollectionName(BaseModel):
 #     collection_name: str = Field('meaningful collection name based on the context of the text')
@@ -73,41 +91,55 @@ embed = OpenAIEmbeddings(
 # class CollectionChunkList(RootModel[List[CollectionName]]):
 #     pass
 
-class CollectionName(BaseModel):
-    collectoin_name: str = Field("meaningful collection name based on the context of the text")
+# system_prompt_collection = """
+#     You are an intelligent AI document categorizer. For each given text chunk, analyze the content deeply and assign a meaningful "collection_name" or category based on the topic or concept covered.
 
-system_prompt_collection = """
-    You are an intelligent AI document categorizer. For each given text chunk, analyze the content deeply and assign a meaningful "collection_name" or category based on the topic or concept covered.
+#     At the end, after assigning proper names to every chunk, return all the chunks in a list
 
-    Guidelines:
-    - Create only 3-4 major categories overall to keep collections manageable.
-    - Choose intuitive, short collection names (eg: 'AI Basics', 'ML Algorithms', 'Data Engineering', 'LLMs').
-    - Do NOT hallucinate or generate irrelevant categories.
-    - IMPORTANT: Donot create more than 4 collections.
-"""
+#     Guidelines:
+#     - Create only 3-4 major categories overall to keep collections manageable.
+#     - Choose intuitive, short collection names (eg: 'AI Basics', 'ML Algorithms', 'Data Engineering', 'LLMs').
+#     - Do NOT hallucinate or generate irrelevant categories.
+#     - IMPORTANT: Donot create more than 4 collections.
+#     - return python list at the end.
+# """
 
-system_prompt_vector_store = """
-    You are an helpful ai assistant for the given collection name, assign it to the collection name of the actual vector store
-
-    {collectoin_name}
-"""
-
-collection_output_parser = PydanticOutputParser(pydantic_object=CollectionName)
+# collection_output_parser = PydanticOutputParser(pydantic_object=CollectionChunkList)
 
 
-collection_prompt = ChatPromptTemplate.from_messages([
-    ("system", system_prompt_collection),
-    ("human", '{chunk}'),
-    ("system", "{format_instructions}")
-])
+# collection_prompt = ChatPromptTemplate.from_messages([
+#     ("system", system_prompt_collection),
+#     ("human", '{chunk}'),
+#     ("system", "{format_instructions}")
+# ])
 
-COLLECTION = ""
+# collection_chain = collection_prompt | model | collection_output_parser
 
-collection_chain = collection_prompt | model | collection_output_parser
+# BATCH_SIZE = 50
+# total_chunks = len(splitted_text_page_content)
+# batches = math.ceil(total_chunks / BATCH_SIZE)
 
-result = collection_chain.invoke({
-    "chunk": splitted_text,
-    "format_instructions": collection_output_parser.get_format_instructions()
-})
+# print(f"NO OF BATCHES : {batches}")
 
-print(result)
+# results = []
+
+# for i in range(3):
+#     start = i * BATCH_SIZE
+#     end = min((i+1)*BATCH_SIZE, total_chunks)
+#     chunk_batch = splitted_text_page_content[start:end]
+
+#     # chunk_text = "\n \n".join(chunk.page_content for chunk in chunk_batch)
+
+#     chunk_result = collection_chain.invoke(
+#         {
+#             "chunk": chunk_batch,
+#             "format_instructions": collection_output_parser.get_format_instructions()
+#         }
+#     )
+
+#     print(f"THIS IS THE TYPE OF CHUNK RESULT IN THE LOOP : {type(chunk_result)}")
+#     results.extend(chunk_result.root)
+
+# print(f"THIS IS THE TYPE OF FINAL RESULTS TYPE : {type(results)}")
+
+# print(results[0])
