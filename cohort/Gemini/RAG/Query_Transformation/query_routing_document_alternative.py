@@ -2,6 +2,7 @@ from typing import List, Literal
 from dotenv import load_dotenv
 import langchain_core
 from sklearn.metrics import pairwise_distances_argmin_min
+from sklearn.metrics.pairwise import cosine_similarity
 load_dotenv()
 import os
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
@@ -135,7 +136,7 @@ docid_to_embedding = {id(doc): emb for emb, doc in zip(embeddings, splitted_text
 for cluster_id, doc_in_cluster in clustered_chunks.items():
     # converting docs in cluster to embeddings : 
     cluster_embeddings = [docid_to_embedding[id(doc)] for doc in doc_in_cluster] 
-    print(f"EMBEDDING INSIDE LOOP FOR {cluster_id} ☑️")
+    # print(f"EMBEDDING INSIDE LOOP FOR {cluster_id} ☑️")
 
     # finding doc closest to cluster centroid : 
     closest_idx, _ = pairwise_distances_argmin_min(
@@ -151,10 +152,58 @@ for cluster_id, doc_in_cluster in clustered_chunks.items():
     })
 
     if cluster_name.collection_name in cluster_chunk_names:
-        cluster_chunk_names[cluster_name.collection_name].append(doc_in_cluster)
+        cluster_chunk_names[cluster_name.collection_name].extend(doc_in_cluster)
     else:
         cluster_chunk_names[cluster_name.collection_name] = doc_in_cluster
     print(f"CLUSTER NAME FOR {cluster_id} -> {cluster_name.collection_name}")
 
 print(list(cluster_chunk_names.keys()))
 
+# new_collection_names = list(cluster_chunk_names.keys())
+# new_embeddings = embed.embed_documents(new_collection_names)
+
+URL = "http://localhost:6333"
+qclient = QdrantClient(url=URL)
+
+exsisting_collection_names = [c.name for c in qclient.get_collections().collections]
+exsisting_embeddings = embed.embed_documents(exsisting_collection_names)
+
+# doing similarity check between exsisting and new collection namees : 
+
+for cluster_name, docs_in_cluster in cluster_chunk_names.items():
+    if exsisting_collection_names and len(exsisting_collection_names) > 0:
+        new_name = cluster_name
+        new_embedding = embed.embed_query(new_name)
+        similarity = cosine_similarity([new_embedding], exsisting_embeddings)[0]
+
+        max_idx = similarity.argmax()
+        max_sim = similarity[max_idx]
+
+        if max_sim > 0.85:
+            print(f"✅ Matched existing collection: {exsisting_collection_names[max_idx]} ({max_sim:.2f})")
+            qdrant_vector_store = QdrantVectorStore.from_documents(
+                documents=docs_in_cluster,
+                embedding=embed,
+                collection_name = exsisting_collection_names[max_idx],
+                url = URL,
+            )
+        else:
+            print('⚒️ Creating New Collection')
+            qdrant_vector_store = QdrantVectorStore.from_documents(
+            documents=cluster_chunk_names[new_name],
+            embedding=embed,
+            collection_name = new_name,
+            url = URL,
+        )
+        exsisting_collection_names.append(cluster_name)
+        exsisting_embeddings.append(new_embedding)
+    else:
+        print('💀 Create Entirely New Collections')
+        qdrant_vector_store = QdrantVectorStore.from_documents(
+            documents=cluster_chunk_names[cluster_name],
+            embedding=embed,
+            collection_name = cluster_name,
+            url = URL,
+        )
+        exsisting_collection_names.append(cluster_name)
+        exsisting_embeddings.append(embed.embed_query(cluster_name))
