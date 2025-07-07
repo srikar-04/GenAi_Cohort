@@ -123,16 +123,13 @@ collection_chain = collection_prompt | model | collection_output_parser
 
 cluster_chunk_names = {}
 
-# MAPPING DOC ID TO IT'S EMBEDDING
-docid_to_embedding = {id(doc): emb for emb, doc in zip(embeddings, splitted_text)}
-
 # GETTING THE DOC CLOSEST TO CENTROID TO DECIDE COLLECTION NAME 
 # 4. GENERATING A COLLECTION NAME FOR USING THE CLUSTER :
 
 for cluster_id, doc_in_cluster in clustered_chunks.items():
     # converting docs in cluster to embeddings : 
-    cluster_embeddings = [docid_to_embedding[id(doc)] for doc in doc_in_cluster] 
-    print(f"EMBEDDING INSIDE LOOP FOR {cluster_id} ☑️")
+    cluster_embeddings = [embed.embed_query(doc.page_content) for doc in doc_in_cluster] 
+    print("EMBEDDING INSIDE LOOP FOR {cluster_id} ☑️")
 
     # finding doc closest to cluster centroid : 
     closest_idx, _ = pairwise_distances_argmin_min(
@@ -149,7 +146,7 @@ for cluster_id, doc_in_cluster in clustered_chunks.items():
 
     cluster_chunk_names[cluster_name.collection_name] = doc_in_cluster
 
-print(cluster_chunk_names.keys())
+print(cluster_chunk_names)
 
  
 # for cluster_id, doc_in_cluster in clustered_chunks.items():
