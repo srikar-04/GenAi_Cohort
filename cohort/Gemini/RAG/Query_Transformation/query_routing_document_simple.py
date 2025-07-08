@@ -81,15 +81,37 @@ print('CREATED COLLECTION NAMES EMBEDDINGS ✅')
 
 collection_doc_map = {}
 
-for doc in docs_embeddings:
+for idx, doc in enumerate(docs_embeddings):
     similarity = [cosine_similarity([doc], [collection]) for collection in collection_names_embeddigs]
     max_index = similarity.index(max(similarity))
     key = collection_names[max_index]
     # print('COLLECTION CREATED ☑️')
     if  key in collection_doc_map.keys():
-        collection_doc_map[key].extend(doc)
+        collection_doc_map[key].extend([splitted_text[idx]])
     else:
-        collection_doc_map[key] = doc
+        collection_doc_map[key] = [splitted_text[idx]]
 
 print(collection_doc_map.keys())
 
+URL = "http://localhost:6333"
+qclient = QdrantClient(url=URL)
+
+exsisting_collection_names = [c.name for c in qclient.get_collections().collections]
+
+
+for collection_name, docs in collection_doc_map.items():
+    # print(collection_doc_map[collection_name][0])
+    # break
+    need_ingestion = (
+        (collection_name not in exsisting_collection_names) or (qclient.count(collection_name=collection_name).count == 0)
+    )
+    if need_ingestion:
+        print('⚒️ Creating New Collection')
+        qdrant_vector_store = QdrantVectorStore.from_documents(
+            documents=collection_doc_map[collection_name],
+            embedding=embed,
+            collection_name = collection_name,
+            url = URL,
+        )
+    else:
+        print(f"⏩ skipping collection, already exsists")
