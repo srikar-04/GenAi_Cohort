@@ -92,3 +92,4 @@ for doc in docs_embeddings:
         collection_doc_map[key] = doc
 
 print(collection_doc_map.keys())
+
