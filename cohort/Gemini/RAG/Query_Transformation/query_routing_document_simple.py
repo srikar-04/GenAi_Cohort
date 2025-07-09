@@ -114,4 +114,4 @@ for collection_name, docs in collection_doc_map.items():
             url = URL,
         )
     else:
-        print(f"⏩ skipping collection, already exsists")
+        print(f" skipping collection, already exsists")
