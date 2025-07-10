@@ -63,11 +63,6 @@ embed = OpenAIEmbeddings(
     api_key=openai_api_key
 )
 
-# class CollectionName(BaseModel):
-#     collection_name: str = Field('collection name based on the avaible summary text of the content')
-
-# collection_output_parser = PydanticOutputParser(pydantic_object=CollectionName)
-
 # 1. EMBEDDING THE SPLITTED TEXT : 
 docs_embeddings  = embed.embed_documents([content.page_content for content in splitted_text])
 
@@ -115,3 +110,65 @@ for collection_name, docs in collection_doc_map.items():
         )
     else:
         print(f" skipping collection, already exsists")
+
+collection_summary = {}
+
+for collection_name, docs in collection_doc_map.items():
+    summary = " ".join(doc.page_content for doc in docs[:10])
+    collection_summary[collection_name] = summary
+
+class CollectionName(BaseModel):
+    collection_name: str = Field('choosen collection name according to user query')
+
+routing_parser = PydanticOutputParser(pydantic_object=CollectionName)
+
+routing_system_prompt = PromptTemplate(
+    template= """
+        You are an intelligent AI assistant and you are given with some predefined collection names along with their short summary which belongs to a qdrant database.
+
+        According to the user query, choose the best collection which matches semantically well.
+
+        The format of the collection names and summaries are :
+        {{
+            collection_name : "short summary of collection formed using first 10 documents"
+            ......
+        }}
+
+        This is the query from the user. Analyse it and response with the best possible output. Think and verify before responding.
+
+        UserQuery : 
+        {user_query}
+
+        Here are collections names along with their summaries.
+        {collection_summary}
+
+        Rules:
+            - Do not hellucinate
+            - Your response should always be in json format.
+            - Analyse the user query carefully and verify before responding
+    """,
+    input_variables=["user_query", "collection_summary"]
+)
+
+routing_prompt = ChatPromptTemplate([
+    ('system', routing_system_prompt),
+    ('system', "{format_instructions}")
+])
+
+while True:
+
+    print('type EXIT to exit chat')
+    user_query = input('human > ')
+
+    if user_query.lower() == 'exit':
+        break
+
+    chain = routing_prompt | model | routing_parser
+
+    result = chain.invoke({
+        "user_query": user_query,
+        "collection_summary": collection_summary,
+        "format_instructions": routing_parser.get_format_instructions()
+    })
+
+    print(result)
