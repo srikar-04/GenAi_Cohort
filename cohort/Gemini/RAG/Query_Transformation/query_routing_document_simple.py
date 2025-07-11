@@ -86,7 +86,7 @@ for idx, doc in enumerate(docs_embeddings):
     else:
         collection_doc_map[key] = [splitted_text[idx]]
 
-print(collection_doc_map.keys())
+# print(collection_doc_map.keys())
 
 URL = "http://localhost:6333"
 qclient = QdrantClient(url=URL)
@@ -109,7 +109,7 @@ for collection_name, docs in collection_doc_map.items():
             url = URL,
         )
     else:
-        print(f" skipping collection, already exsists")
+        print(f"⏩ skipping collection, already exsists")
 
 collection_summary = {}
 
@@ -122,7 +122,7 @@ class CollectionName(BaseModel):
 
 routing_parser = PydanticOutputParser(pydantic_object=CollectionName)
 
-routing_system_prompt = PromptTemplate(
+routing_prompt = PromptTemplate(
     template= """
         You are an intelligent AI assistant and you are given with some predefined collection names along with their short summary which belongs to a qdrant database.
 
@@ -150,14 +150,15 @@ routing_system_prompt = PromptTemplate(
     input_variables=["user_query", "collection_summary"]
 )
 
-routing_prompt = ChatPromptTemplate([
-    ('system', routing_system_prompt),
-    ('system', "{format_instructions}")
-])
+# routing_prompt = ChatPromptTemplate.from_messages([
+#     ('system', routing_system_prompt),
+#     ('system', "{format_instructions}")
+# ])
+
+print('type EXIT to exit chat')
 
 while True:
 
-    print('type EXIT to exit chat')
     user_query = input('human > ')
 
     if user_query.lower() == 'exit':
@@ -168,7 +169,50 @@ while True:
     result = chain.invoke({
         "user_query": user_query,
         "collection_summary": collection_summary,
-        "format_instructions": routing_parser.get_format_instructions()
+        # "format_instructions": routing_parser.get_format_instructions()
     })
 
-    print(result)
+    choosen_collection_name = result.collection_name
+    
+    qdrant_vector_store = QdrantVectorStore(
+        client=qclient,
+        collection_name=choosen_collection_name,
+        embedding=embed
+    )
+
+    retriever = qdrant_vector_store.as_retriever()
+
+    relevant_docs = retriever.invoke(user_query)
+
+    context = "\n\n---\n\n".join(doc.page_content for doc in relevant_docs)
+
+    final_prompt = PromptTemplate(
+        template = """
+            You are an intelligent ai assistant who responses based on the available context and user query.
+
+            Here are the context and user query : 
+            {context}
+            {user_query}
+
+            Here are the steps to approach answring the question : 
+            - Analyse given user query carefully multiple times
+            - choose relevant content from the available context.
+            - Merge all relevant content to give answer that soots user query
+            - Finally observe and verify the output before respomding.
+
+            Rules : 
+            - Donot hellucinate.
+            - IMPORTANT : If the answer is from outside of the context tell the user that you do not know the answer
+            - Always verify the output before responding
+        """,
+        input_variables=["context", "user_query"]
+    )
+
+    final_chain = final_prompt | model
+
+    final_result = final_chain.invoke({
+        "context": context,
+        "user_query": user_query
+    })
+
+    print(final_result.content)
