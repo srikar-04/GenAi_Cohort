@@ -24,7 +24,7 @@ def chatbot(state: State):
     user_query = input('>  ')
     result = model.invoke(user_query)
     final_result = result.content
-    state['messages'].append(final_result)
+    state['messages'] = final_result
     # print(f"DEBUG: {state}")
     return state
 
@@ -35,6 +35,12 @@ graph_builder.add_edge("chatbot", END)
 
 graph = graph_builder.compile()
 
-final_state = graph.invoke({"messages": []})
+initial_state = {"messages": []}
 
-print(final_state)
+while True:
+
+    final_state = graph.invoke(initial_state)
+
+    initial_state = final_state
+
+    print(final_state)
