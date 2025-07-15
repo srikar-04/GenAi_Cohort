@@ -146,9 +146,7 @@ while "__interrupt__" in state:
 # print('do you agree with this tool output yes/no ')
 # user_approval = input("> ")
 
-final_state_1 = graph.invoke(Command(resume=(user_approval.lower() == 'yes')), config=config)
-
-if final_state_1['messages'][-1].content:
-    print('THIS IS FINAL LLM RESPONSE: ',final_state_1['messages'][-1].content)
+if state['messages'][-1].content:
+    print('THIS IS FINAL LLM RESPONSE: ',state['messages'][-1].content)
 else:
-    print('THIS IS FINAL TOOL RESPONSE: ', final_state_1['tool_responses'][-1].content)
+    print('THIS IS FINAL TOOL RESPONSE: ', state['tool_responses'][-1].content)
