@@ -32,9 +32,13 @@ def multiply(a: float, b: float) -> float:
 
 model_with_tools = model.bind_tools([multiply])
 
+available_tools = {
+    "multiply": multiply
+}
+
 def tool_router(state: ToolState):
     user_query = state['messages'][-1]
-    print(f"USER QUERY : {user_query.content}")
+    # print(f"USER QUERY : {user_query.content}")
     result = model_with_tools.invoke(user_query.content)
     # print(f"RESULT: {result.tool_calls}")
     if result.tool_calls:
@@ -48,15 +52,22 @@ def tool_router(state: ToolState):
 # print(result)
 
 def tool_node(state: ToolState):
-    print(f"STATE IN TOOL NODE: {state}")
-    # return {'messages': ToolMessage(content='completed tool call')}
-    return {'messages': ['completed tool call']}
+    # print(f"STATE IN TOOL NODE: {state} \n \n \n ")
+    tool = available_tools.get(state['messages'][-1].tool_calls[0]['name'])
+    args = state['messages'][-1].tool_calls[0]['args']
+
+    # [IMPORTANT]: even after getting the tool name from available tools it wont be callable because langchain modifies it into langchain function. that contains "func" which represents the callble function.
+    tool_response = tool.func(**args)
+
+    final_response = AIMessage(content=f'the final tool response is {tool_response}')
+    return {'messages': [final_response]}
 
 def llm_node(state: ToolState):
     # perform llm call based on state
-    # return {'messages': AIMessage(content='performed llm call')}
-    print(f"STATE IN LLM NODE: {state}")
-    return {'messages': ['performed llm call']}
+    user_query = state['messages'][-1].content
+    result = model.invoke(user_query)
+    # print(f"STATE IN LLM NODE: {state}")
+    return {'messages': [result]}
 
 
 # add nodes
@@ -93,8 +104,10 @@ graph_builder.add_edge('llm_node', END)
 
 graph = graph_builder.compile()
 
+user_query = input("> ")
+
 final_state = graph.invoke(
-    {"messages": ['what is 4 times 4 ?']}
+    {"messages": [user_query]}
 )
 
 print(final_state['messages'][-1])
