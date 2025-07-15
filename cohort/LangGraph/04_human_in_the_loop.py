@@ -20,7 +20,9 @@ model = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
 
 class ToolState(TypedDict):
     messages: Annotated[list, add_messages]
+    tool_responses: Annotated[list, add_messages]
     approved: bool
+    user_query: str
 
 
 @tool
@@ -41,24 +43,26 @@ available_tools = {
 }
 
 def human_assistance(state: ToolState):
-    """Request assistance from a human."""
     approved = interrupt(
         {
             'revise': 'do you approve with this response',
-            'tool_output': state
+            'messages': state['messages'],
+            'tool_responses': state['tool_responses'],
+            'user_query': state['user_query'],
         }
     )
+    print(f'THIS IS THE FUCKING APPROVED {approved} \n \n ITS FUCKING TYPE IS {type(approved)}')
     if approved:
         # end the session
-        return Command(goto=END)
+        return Command(goto=END, update={"approved": True})
     else:
         # again call tool node
-        return Command(goto='tool_node')
+        return Command(goto='tool_node', update={"approved": False})
 
 def tool_router(state: ToolState):
-    user_query = state['messages'][-1]
+    user_query = state['user_query']
     # print(f"USER QUERY : {user_query.content}")
-    result = model_with_tools.invoke(user_query.content)
+    result = model_with_tools.invoke(user_query)
     # print(f"RESULT: {result.tool_calls}")
     if result.tool_calls:
         # pass to tool call node
@@ -71,7 +75,7 @@ def tool_router(state: ToolState):
 # print(result)
 
 def tool_node(state: ToolState):
-    # print(f"STATE IN TOOL NODE: {state} \n \n \n ")
+    print(f"STATE IN TOOL NODE: {state} \n \n \n ")
     tool = available_tools.get(state['messages'][-1].tool_calls[0]['name'])
     args = state['messages'][-1].tool_calls[0]['args']
 
@@ -79,11 +83,11 @@ def tool_node(state: ToolState):
     tool_response = tool.func(**args)
 
     final_response = AIMessage(content=f'the final tool response is {tool_response}')
-    return {'messages': [final_response]}
+    return {'tool_responses': [final_response]}
 
 def llm_node(state: ToolState):
     # perform llm call based on state
-    user_query = state['messages'][-1].content
+    user_query = state['user_query']
     result = model.invoke(user_query)
     # print(f"STATE IN LLM NODE: {state}")
     return {'messages': [result]}
@@ -117,9 +121,7 @@ graph_builder.add_conditional_edges(
     }
 )
 
-graph_builder.add_edge('tool_node', END)
 graph_builder.add_edge('tool_node', 'human_assistance')
-graph_builder.add_edge('human_assistance', END)
 graph_builder.add_edge('llm_node', END)
 
 memory = MemorySaver()
@@ -129,18 +131,22 @@ graph = graph_builder.compile(checkpointer=memory)
 
 user_query = input("> ")
 
-final_state = graph.invoke(
-    {"messages": [user_query]},
+state = graph.invoke(
+    {"user_query": user_query},
     config=config
 )
 
 # print(final_state['messages'][-1])
 
-print(final_state["__interrupt__"][0].value)
-print('do you agree with this tool output yes/no ')
-user_approval = input("> ")
+while "__interrupt__" in state:
+    print(state["__interrupt__"][0].value)
+    user_approval = input("do you agree with this tool output yes/no > ")
+    state = graph.invoke(Command(resume=(user_approval.lower() == 'yes')), config=config)
 
+# print(final_state["__interrupt__"][0].value)
+# print('do you agree with this tool output yes/no ')
+# user_approval = input("> ")
 
-final_state_1 = graph.invoke(Command(resume=user_approval.lower() == 'yes'), config=config)
+final_state_1 = graph.invoke(Command(resume=(user_approval.lower() == 'yes')), config=config)
 
 print(final_state_1['messages'][-1].content)
