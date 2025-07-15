@@ -25,7 +25,10 @@ def chatBot(state: LLMState):
     user_query = state['messages']
     # print(f'USER QUERY: {user_query.content}')
     result = model.invoke(user_query)
-    print(f"[DEBUG] : STATE : {state}")
+    # print(f"[DEBUG] : STATE : {state}")
+
+    # [IMPORTANT]: WHEN YOU RETURN ONLY THE NEWLY GENERATED MESSAGES THEN ONLY THEY ARE ADDED TO THE STATE.
+    # MESSAGES WONT BE ADDED IF THE ENTIRE STATE IS RETURNED
     return {'messages': [result]}
 
 
