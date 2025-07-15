@@ -24,6 +24,7 @@ class State(TypedDict):
 
 @tool
 def humanAssistance(query: str) -> str:
+    """Request assistance from a human."""
     human_response = interrupt(
         {
             "query": query
@@ -50,6 +51,7 @@ def tool_node(state: State):
     tool_response = tool_name.func(**args)
 
     print(f"THIS IS TOOL RESPONSE: {tool_response}")
+    return {'messages': [tool_response]}
     
 
 
@@ -57,13 +59,13 @@ graph_builder = StateGraph(State)
 
 # add nodes
 graph_builder.add_node("chatBot", chatBot)
-graph_builder.add_node('tool_call', tool_node)
+graph_builder.add_node('tool_node', tool_node)
 
 # add edges
 graph_builder.add_edge(START, "chatBot")
 
 graph_builder.add_conditional_edges(
-    chatBot,
+    "chatBot",
     lambda state: 'tool_call' if state['messages'][-1].tool_calls else 'llm_call',
     {
         'tool_call': "tool_node",
@@ -83,7 +85,7 @@ user_query = input('> ')
 
 state = graph.invoke(
     {
-        "messages": [user_query]
+        "user_query": user_query
     },
     config=config
 )
@@ -91,5 +93,8 @@ state = graph.invoke(
 while "__interrupt__" in state:
     print(state["__interrupt__"][0].value)
     human_assistance = input('user needs your assistance please help him \n >')
-    graph
-    final_state = graph.invoke(Command(resume={"data": human_assistance}), config=config)
+    state = graph.invoke(Command(resume={"data": human_assistance}), config=config)
+
+final_response = state['messages'][-1]
+
+print(f'THIS IS FINAL RESPONSE: {final_response}')
