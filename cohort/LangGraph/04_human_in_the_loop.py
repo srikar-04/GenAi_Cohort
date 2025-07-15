@@ -46,12 +46,11 @@ def human_assistance(state: ToolState):
     approved = interrupt(
         {
             'revise': 'do you approve with this response',
-            'messages': state['messages'],
-            'tool_responses': state['tool_responses'],
+            'messages': state['messages'][-1],
+            'tool_responses': state['tool_responses'][-1],
             'user_query': state['user_query'],
         }
     )
-    print(f'THIS IS THE FUCKING APPROVED {approved} \n \n ITS FUCKING TYPE IS {type(approved)}')
     if approved:
         # end the session
         return Command(goto=END, update={"approved": True})
@@ -75,7 +74,7 @@ def tool_router(state: ToolState):
 # print(result)
 
 def tool_node(state: ToolState):
-    print(f"STATE IN TOOL NODE: {state} \n \n \n ")
+    # print(f"STATE IN TOOL NODE: {state} \n \n \n ")
     tool = available_tools.get(state['messages'][-1].tool_calls[0]['name'])
     args = state['messages'][-1].tool_calls[0]['args']
 
@@ -149,4 +148,7 @@ while "__interrupt__" in state:
 
 final_state_1 = graph.invoke(Command(resume=(user_approval.lower() == 'yes')), config=config)
 
-print(final_state_1['messages'][-1].content)
+if final_state_1['messages'][-1].content:
+    print('THIS IS FINAL LLM RESPONSE: ',final_state_1['messages'][-1].content)
+else:
+    print('THIS IS FINAL TOOL RESPONSE: ', final_state_1['tool_responses'][-1].content)
