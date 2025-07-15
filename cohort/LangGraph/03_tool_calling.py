@@ -86,9 +86,7 @@ graph_builder.add_node("llm_node", llm_node)
 # 2 -> if yes then prepare a tool call node for calling the tool
 # 3 -> if no then return with an llm call
 
-tool_response = graph_builder.add_edge(START, "tool_router")
-
-# print(f"TOOL RESPONSE: {tool_response}")
+graph_builder.add_edge(START, "tool_router")
 
 graph_builder.add_conditional_edges(
     "tool_router",
