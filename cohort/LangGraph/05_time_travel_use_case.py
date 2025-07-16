@@ -75,7 +75,7 @@ graph = graph_builder.compile(checkpointer=memory)
 
 state = graph.invoke({}, config=config)
 
-print(state['summarize'])
+print('initial state (strategy-1): ',state['summarize'])
 
 snapshots = list(graph.get_state_history(config=config))
 
@@ -89,7 +89,12 @@ for snapshot in snapshots:
     # print(f'PRESENT NODE CONFIG : {snapshot.config} \n \n')
 
     if snapshot.next and (snapshot.next[0]  == 'strategy_1'):
-        print('inside the if condition')
         selected_state = snapshot
 
-print(f'SELECTED STATE : {selected_state.next}\n {selected_state.values}')
+# print(f'SELECTED STATE : {selected_state.next}\n {selected_state.values}')
+
+new_config = graph.update_state(selected_state.config, values={"strategy": 'strategy_2'})
+
+final_state = graph.invoke(None, new_config)
+
+print('final altered state (strategy - 2): ', final_state['summarize'])
