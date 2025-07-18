@@ -1,21 +1,14 @@
 # If your project has multiple types of data at multiple stages then you have to use multiple schemas(multiple states)
+# Don't know why the fuck it is giving me string output when i fetch them from state. so i explicitly converted to int type
 
-from langgraph.checkpoint.memory import MemorySaver
-from typing_extensions import TypedDict, Annotated
+from typing_extensions import TypedDict
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.tools import tool
-from langchain_core.messages import HumanMessage, SystemMessage
-from typing import List
 
 from langgraph.graph import StateGraph, START, END
-from langgraph.graph.message import add_messages
 import os
 from dotenv import load_dotenv
 load_dotenv()
-from pydantic import BaseModel, Field
-import operator
-from langgraph.types import Send
 import random
 import math
 
@@ -34,7 +27,7 @@ class OutputState(TypedDict):
     operated_number: float
 
 class OverallState(InputState, OutputState):
-    random_number: int
+    random_number: float
 
 class PrivateState(TypedDict):
     private_data: int
@@ -45,12 +38,15 @@ class PrivateState(TypedDict):
 def obtain_number(state: InputState) -> OverallState:
     # generating random number between 1 to 10 and adding it to the number sent by the user
     random_number = math.floor((random.random() * 10) + 1)
+    # print(f'TYPE OF RANDOM NUM IN OBTAIN NUMBER : {type(random_number)}')
     input = state['number']
-    return {'random_number': random_number*input}
+    return {'random_number': int(random_number)*input}
 
 def private_data(state: OverallState) -> PrivateState:
     # adding 100 to the obtained data
-    return {'private_data': state['random_number'] + 100}
+    random_number = state['random_number']
+    print(f'TYPE OF RANDOM NUM IN PRIVATE DATA : {type(random_number)}')
+    return {'private_data': (int(random_number) + 100)}
 
 def output_node(state:PrivateState) -> OutputState:
     # divind with 3 from the data of output state :
