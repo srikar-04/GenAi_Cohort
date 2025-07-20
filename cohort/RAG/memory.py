@@ -19,11 +19,11 @@ config = {
             "max_tokens": 2000,
         }
     },
-    "embedder": {
-        "provider": "gemini",
-        "config": {
-            "api_key": gemini_api_key,
-            "model": "models/embedding-001",
+   'embedder': {
+        'provider': 'gemini',
+        'config': {
+            'model': 'models/text-embedding-004',
+            'embedding_dims': 768
         }
     },
     "vector_store": {
