@@ -17,9 +17,9 @@ mem_api_key = os.environ['MEM0_API_KEY']
 
 config = {
     'llm': {
-        'provider': 'litellm',
+        'provider': 'gemini',
         'config': {
-            "model": "gemini/gemini-pro",
+            "model": "gemini-2.0-flash-001",
             'temperature': 0.2
         }
     },
@@ -37,11 +37,12 @@ config = {
             'model': 'models/text-embedding-004',
             'embedding_dims': 768
         }
-    }
+    },
+    "history_db_path": "./history.db",
 }
 
 user_id = 'srikar'
-memory = Memory.from_config(config, user_id)
+memory = Memory.from_config(config)
 
 # defining state:
 
@@ -53,7 +54,7 @@ class MemoryState(TypedDict):
 
 def add_to_memory(state: MemoryState):
     responses = state['messages']
-    result = '\n----\n'.join(response for response in responses)
+    result = '\n---------------\n'.join(response for response in responses)
     print(result)
 
 def llm_call(state: MemoryState):
