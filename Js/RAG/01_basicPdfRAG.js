@@ -10,3 +10,24 @@
 // feed it to the context of llm
 // generate final output
 
+import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf"
+import path from 'path'
+import fs from 'fs'
+
+const userDir = 'C:/Users/srikar/Desktop/RAG_Docs/leph1dd'
+
+const pdfPath = path.join(userDir, 'leph1an.pdf')
+
+if (fs.existsSync(pdfPath)) {
+    console.log('PDF found at:', pdfPath);
+
+    const loader = new PDFLoader(pdfPath)
+
+    const docs = await loader.load()
+
+    // console.log(docs[0].pageContent)
+
+} else {
+    console.error('File not found:', pdfPath);
+    process.exit(1)
+}
