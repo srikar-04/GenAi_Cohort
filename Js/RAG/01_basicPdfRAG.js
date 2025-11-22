@@ -143,59 +143,59 @@ if(!needIngestion) {
 
 const retireiver = vectorStore.asRetriever()
 
-// const apiKey = process.env.GEMINI_API_KEY
+const apiKey = process.env.GEMINI_API_KEY
 
-// if(!apiKey) throw new Error('api key not found')
+if(!apiKey) throw new Error('api key not found')
 
-// const client = new OpenAI({
-//     apiKey: apiKey,
-//     baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/"
-// })
+const client = new OpenAI({
+    apiKey: apiKey,
+    baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/"
+})
 
-// const messages = []
+const messages = []
 
-// const rl = readline.createInterface({
-//     input: process.stdin,
-//     output: process.stdout,
-// });
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+});
 
 
-// let realtedContext;
+let realtedContext;
 
-// while (true) {
+while (true) {
 
-//     realtedContext = ""
+    realtedContext = ""
     
-//     rl.question('🧠 Enter your qeury (or type "exit")', async (qeury) => {
+    rl.question('🧠 Enter your qeury (or type "exit")', async (qeury) => {
 
-//         messages.push({
-//             role: "user",
-//             content: qeury
-//         })
+        messages.push({
+            role: "user",
+            content: qeury
+        })
 
-//         if(qeury.toLowerCase === 'exit') {
-//             rl.close()
-//         }
+        if(qeury.toLowerCase === 'exit') {
+            rl.close()
+        }
 
-//         // retireiving related docuemnts
-//         const relevantDocs = retireiver.invoke(qeury)
-//         relevantDocs.map(doc => realtedContext.concat("\n\n", doc.pageContent, "\n\n"))
-//     })
-// }
+        // retireiving related docuemnts
+        const relevantDocs = retireiver.invoke(qeury)
+        relevantDocs.map(doc => realtedContext.concat("\n\n", doc.pageContent, "\n\n"))
+    })
+}
 
-// const systemPrompt = `
-//     Answert the use query only based on the context available which is delimented in triple quotes :
-//     """${realtedContext}""""
+const systemPrompt = `
+    Answert the use query only based on the context available which is delimented in triple quotes :
+    """${realtedContext}""""
 
-//     If the questions does not relate to the available context then response with "no context available for this topic" 
-// `
-// messages.push({
-//     role: "developer",
-//     content: systemPrompt
-// })
+    If the questions does not relate to the available context then response with "no context available for this topic" 
+`
+messages.push({
+    role: "developer",
+    content: systemPrompt
+})
 
-// const response = await client.chat.completions.create({
-//     model: "gemini-2.0-flash",
-//     messages: messages
-// })
+const response = await client.chat.completions.create({
+    model: "gemini-2.0-flash",
+    messages: messages
+})
 
