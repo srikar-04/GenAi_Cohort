@@ -1,3 +1,4 @@
+import cmd
 from dotenv import load_dotenv
 load_dotenv()
 import os
@@ -25,14 +26,43 @@ def random_number(range):
     random_num = math.floor(random.random() * range)
     return random_num
 
-def execute_command(command: str):
+def execute_command(command: str, shell_type: str = "auto", cwd: str = None):
     print("inside the execute command function !!!!")
-    result = subprocess.run(command, shell=True, capture_output=True, text=True)
-    print(result)
-    if result.returncode == 0:
-        return f"Command executed successfully:\n{result.stdout.strip()}"
+    # result = subprocess.run(command, shell=True, capture_output=True, text=True)
+    # print(result)
+    # if result.returncode == 0:
+    #     return f"Command executed successfully:\n{result.stdout.strip()}"
+    # else:
+    #     raise ValueError("Execute command function failed!!")
+
+    if cwd : 
+        if not os.path.exists(cwd):
+            raise FileNotFoundError(f"given cwd does not exsists {cwd}")
+        print(f"running in cwd {cwd} \n")
+
+    # choose how to invoke the shell
+    if shell_type == "bash":
+        runner = ["bash", "-lc", command]
+        use_shell = False
+    elif shell_type == "cmd":
+        runner = ["cmd", "/c", command]
+        use_shell = False
     else:
-        raise ValueError("Execute command function failed!!")
+        # auto: let subprocess use default shell (cmd on Windows) using shell=True
+        runner = command
+        use_shell = True
+
+    print(f"Running Command {command} \n")
+    result = subprocess.run(runner, shell=use_shell, capture_output=True, text=True, cwd=cwd)
+
+    print("returncode:", result.returncode)
+    print("stdout:", result.stdout)
+    print("stderr:", result.stderr)
+
+    if result.returncode == 0:
+        return f"✅ Command executed successfully:\n{result.stdout.strip()}"
+    else:
+        raise ValueError(f"❌ Execute command function failed!!\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}")
 
 print(type(execute_command('ls')))
 
@@ -77,9 +107,17 @@ tools = [
                 "command": {
                     "type": "string",
                     "description": "command assumed from user query"
+                },
+                "shell_type": {
+                    "type": "string",
+                    "description": "choose the shell type according to the command. cmd | bash | auto"
+                },
+                "cwd": {
+                    "type": "string",
+                    "description": "choose the shell type according to the command. cmd | bash | auto"
                 }
             },
-            "required": ["command"]
+            "required": ["command", "shell_type", "cwd"]
         }
     }
 ]
@@ -127,7 +165,7 @@ Tools:
 - get_weather: "Returns the weather in a given location"
 - input: "Takes input from the user query"
 - random_number: "Generates a random number in the given range"
-- execute_command: "Assumes a command based on user query and executes the command"
+- execute_command: "Assumes a command based on user query and executes the command. Carefully choose the shell_type according to the command, from bash | cmd | auto"
 """
 
 
