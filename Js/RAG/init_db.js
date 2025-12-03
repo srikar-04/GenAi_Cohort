@@ -18,7 +18,7 @@ db.prepare(`
             uploadedAt TEXT,
             updatedAt TEXT,
             version INTEGER,
-            chunkCount INTEGER,
+            chunkCount INTEGER
         )
     `).run()
 
