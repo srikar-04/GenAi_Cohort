@@ -9,8 +9,8 @@ const TableName = "fileIndex"
 export function insertFileIndex(entry) {
     const insert = db.prepare(`
             INSERT INTO 
-            ${TableName} ( fileHash, fileName, fileSize, uploadedAt, updatedAt,chunkCount, indexCount ) 
-            VALUES (@fileHash, @fileName, @fileSize, @uploadedAt, @updatedAt, @chunkCount, @indexCount)
+            ${TableName} ( fileHash, fileName, fileSize, uploadedAt, updatedAt,chunkCount ) 
+            VALUES (@fileHash, @fileName, @fileSize, @uploadedAt, @updatedAt, @chunkCount)
         `)
     return insert.run(entry)
 }
@@ -33,8 +33,7 @@ export function updateFileIndex(entry) {
             fileSize = @fileSize, 
             uploadedAt = @uploadedAt,
             updatedAt = @updatedAt,
-            chunkCount = @chunkCount,
-            indexCount = @indexCount
+            chunkCount = @chunkCount
             WHERE fileHash = @fileHash
         `)
     return updateStmt.run(entry)
