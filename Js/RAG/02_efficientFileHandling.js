@@ -10,6 +10,10 @@ import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
 import { QdrantClient } from "@qdrant/js-client-rest";
 import { QdrantVectorStore } from "@langchain/qdrant";
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
@@ -95,8 +99,9 @@ async function chunkAndVector(pdfPath, fileHash) {
         fileHash: fileHash,
         fileName: path.basename(pdfPath),
         fileSize: fs.statSync(pdfPath).size,
-        uploadedAt: new Date(),
-        updatedAt: new Date(),
+        uploadedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        version: 1,
         chunkCount: splittedDocs.length
     }
 
@@ -106,16 +111,17 @@ async function chunkAndVector(pdfPath, fileHash) {
     return
 }
 
-async function hashBuffer(buffer) {
+function hashBuffer(buffer) {
     const fileHash = crypto.createHash('sha256').update(buffer).digest('hex')
-    console.log('unique file hash : ', fileHash, '\n \n')
+    // console.log('unique file hash : ', fileHash, '\n \n')
 
     // check whether we have already indexed this file using it's hash (by querying the db)
     // if yes then the file is already indexed (duplicate file is uploaded), skipping all the heavy operations like normalizing, chunking etc...
     // if no then index the file and add an entry to db with all the metadata
 
+    let fileIndex;
     try {
-        const fileIndex = getFileIndexById(fileHash)
+        fileIndex = getFileIndexById(fileHash)
     } catch (error) {
         console.log('error while checking file index : ', error)
         return false
@@ -143,10 +149,8 @@ async function hashBuffer(buffer) {
         const result = hashBuffer(pdfBuffer)
         if(result) {
             await chunkAndVector(pdfPath, result)
-            console.log('🤖 move to the ai query part')
-        } else {
-            console.log('file is already indexed \n 🚀 skipping operations')
         }
+        console.log('🤖 move to the ai query part')
 
     } catch (error) {
         console.log('pipeline error : ', error)
