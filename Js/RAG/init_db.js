@@ -17,8 +17,8 @@ db.prepare(`
             fileSize INTEGER,
             uploadedAt TEXT,
             updatedAt TEXT,
+            version INTEGER,
             chunkCount INTEGER,
-            indexCount INTEGER
         )
     `).run()
 
