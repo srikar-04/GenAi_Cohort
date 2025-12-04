@@ -52,7 +52,7 @@ async function llmCall(vectorStore) {
     while(true) {
         const userQuery = await askQuestion("🧠 Enter your query: ")
 
-        if(userQuery.toLowerCase === 'exit') {
+        if(userQuery.toLowerCase() === 'exit') {
             console.log('\n🤖 Chatbot exiting.\n')
             rl.close()
             break
