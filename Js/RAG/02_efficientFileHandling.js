@@ -176,7 +176,10 @@ async function chunkAndVector(pdfPath, fileHash, vectorStore) {
 
         if(isEmpty) {
             // adding docs to existing empty collection
-            vectorStore.addDocuments(splittedDocs)
+            if(!vectorStore) {
+                vectorStore = await getVectorStore()
+            }
+            await vectorStore.addDocuments(splittedDocs)
         } 
     }
 
