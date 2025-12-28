@@ -10,7 +10,7 @@ const db = new Database('fileIndex.db')
 
 // creating table for file indexing (schema)
 
-db.prepare(`
+db.exec(`
         CREATE TABLE IF NOT EXISTS fileIndex (
             fileHash TEXT PRIMARY KEY,
             fileName TEXT,
@@ -19,8 +19,16 @@ db.prepare(`
             updatedAt TEXT,
             version INTEGER,
             chunkCount INTEGER
-        )
-    `).run()
+        );
+
+        CREATE TABLE IF NOT EXISTS fileChunks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            fileHash TEXT,
+            chunkHash TEXT,
+            metadata TEXT,
+            FOREIGN KEY (fileHash) REFERENCES fileIndex(fileHash) ON DELETE CASCADE
+        );
+    `)
 
 console.log('database initialized successfully')
 
