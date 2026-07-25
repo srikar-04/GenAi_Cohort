@@ -1,0 +1,27 @@
+{
+  "name": "pdf-rag-stack",
+  "private": true,
+  "packageManager": "pnpm@9.12.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "pnpm --filter @pdf-rag/contracts build && pnpm -r --parallel dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "format": "prettier -w ."
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "7.13.1",
+    "@typescript-eslint/parser": "7.13.1",
+    "eslint": "9.6.0",
+    "eslint-config-prettier": "9.1.0",
+    "eslint-plugin-import": "2.29.1",
+    "eslint-plugin-react": "7.35.0",
+    "eslint-plugin-react-hooks": "4.6.2",
+    "prettier": "3.3.3",
+    "typescript": "5.5.4"
+  }
+}

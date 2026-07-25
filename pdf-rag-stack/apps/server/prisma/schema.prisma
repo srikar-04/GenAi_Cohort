@@ -1,0 +1,130 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+enum AuthProvider {
+  GITHUB
+  GOOGLE
+}
+
+enum DocumentStatus {
+  UPLOADED
+  PROCESSING
+  READY
+  FAILED
+}
+
+enum DocumentType {
+  GENERAL
+  RESEARCH
+}
+
+enum ChatRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+model User {
+  id        String         @id @default(uuid())
+  email     String?        @unique
+  name      String?
+  imageUrl  String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  accounts  OAuthAccount[]
+  documents Document[]
+  chats     Chat[]
+}
+
+model OAuthAccount {
+  id             String       @id @default(uuid())
+  provider       AuthProvider
+  providerUserId String
+  accessToken    String?
+  refreshToken   String?
+  expiresAt      Int?
+  scope          String?
+  tokenType      String?
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([provider, providerUserId])
+  @@index([userId])
+}
+
+model Document {
+  id          String          @id @default(uuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  fileName    String
+  fileSize    Int
+  mimeType    String
+  storageKey  String
+  storageUrl  String
+  checksum    String
+  pageCount   Int?
+  wordCount   Int?
+  status      DocumentStatus  @default(UPLOADED)
+  documentType DocumentType   @default(GENERAL)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  chunks      DocumentChunk[]
+  ingestion   DocumentIngestion?
+}
+
+model DocumentIngestion {
+  id           String   @id @default(uuid())
+  documentId   String   @unique
+  document     Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  error        String?
+  model        String?
+  chunkCount   Int?
+  embeddingDim Int?
+}
+
+model DocumentChunk {
+  id         String   @id @default(uuid())
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  chunkIndex Int
+  content    String
+  tokenCount Int
+  metadata   Json?
+  embedding  Unsupported("vector")?
+  createdAt  DateTime @default(now())
+
+  @@index([documentId, chunkIndex])
+  @@unique([documentId, chunkIndex])
+}
+
+model Chat {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  messages  Message[]
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  chatId    String
+  chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  role      ChatRole
+  content   String
+  citations Json?
+  createdAt DateTime @default(now())
+}

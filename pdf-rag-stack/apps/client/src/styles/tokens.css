@@ -1,0 +1,13 @@
+:root {
+  --font-display: 'Fraunces', serif;
+  --font-body: 'Work Sans', sans-serif;
+  --color-ink: #111216;
+  --color-muted: #5a6072;
+  --color-sand: #f6f2ec;
+  --color-cream: #fffdf8;
+  --color-accent: #1d4ed8;
+  --color-accent-soft: #dbe7ff;
+  --color-border: rgba(17, 18, 22, 0.1);
+  --color-card: #ffffff;
+  --shadow-soft: 0 20px 40px rgba(18, 23, 38, 0.08);
+}
